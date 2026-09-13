@@ -1,0 +1,33 @@
+team:
+  name: "Coding Mafias"
+  track: "Logistics"
+  lead:
+    name: "Yug Yadav"
+    email: "24it112@charusat.edu.in"
+  members:
+    - name: "Jinay Shah"
+      email: "24it091@charusat.edu.in"
+    - name: "Bhumi Shah"
+      email: "24it089@charusat.edu.in"
+    - name: "Bhavika Patel"
+      email: "24it062@charusat.edu.in"
+
+submission:
+  title: "PortFlow"
+  problem_statement: >
+    Port operators allocate berths, cranes, and yard space across hundreds of vessels
+    manually in spreadsheets. Congestion hotspots are identified reactively, after vessels
+    are already queuing, and by the time alternate routing decisions are made it is too
+    late to help — the 2021 LA/Long Beach backlog had 100+ ships waiting offshore for
+    weeks, costing global supply chains over $10B.
+  solution_summary: >
+    PortFlow predicts congestion hotspots ahead of time using vessel schedule and berth
+    capacity data, recommends alternate routing strategies for vessels likely to be
+    delayed, optimises berth and crane assignments to reduce turnaround time, and
+    generates a rolling 72-hour port operations plan for shift supervisors.
+  key_features:
+    - "Congestion hotspot prediction from vessel ETAs and berth/yard capacity data"
+    - "Berth and quay-crane assignment optimiser to reduce vessel waiting time"
+    - "Alternate routing recommendations for vessels facing predicted delays"
+    - "72-hour rolling port operations plan generated for shift supervisors"
+    - "IBM Bob-guided investigation of why a hotspot is forming, in plain language"

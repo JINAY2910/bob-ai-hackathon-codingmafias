@@ -1,0 +1,5 @@
+# Problem Statement
+
+Port shift supervisors, terminal operators, and shipping lines are all severely affected by current port scheduling inefficiencies. Allocating berths, cranes, and yard space across hundreds of incoming and outgoing vessels manually in spreadsheets fails dramatically at scale, leaving ports unable to dynamically adapt to disruptions.
+
+This manual, spreadsheet-based approach leads to reactive identification of congestion hotspots, meaning problems are only noticed when vessels are already queuing. By the time alternate routing decisions are made, it is often too late to mitigate the damage. The impact of this inefficiency was starkly demonstrated during the 2021 LA/Long Beach backlog, where over 100 ships were left waiting offshore for weeks, ultimately costing global supply chains an estimated $10B+. With rising global container volumes and increasing geopolitical shipping disruptions, modernizing port operations to proactively manage congestion is more critical now than ever before.
