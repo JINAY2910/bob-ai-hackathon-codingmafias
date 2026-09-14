@@ -31,7 +31,10 @@ def engineer_features(processed_data_dir, raw_data_dir):
     
     # Calculate ETA features (using ts_start as perfect ETA)
     daily_arrivals['arrivals_next_1d'] = daily_arrivals.groupby('port')['daily_arrivals'].shift(-1)
-    daily_arrivals['arrivals_next_3d_sum'] = daily_arrivals.groupby('port')['daily_arrivals'].shift(-1).rolling(window=3, min_periods=1).sum()
+    daily_arrivals['arrivals_next_3d_sum'] = (
+        daily_arrivals.groupby('port')['daily_arrivals']
+        .transform(lambda values: values.shift(-1).rolling(window=3, min_periods=1).sum())
+    )
     
     print("Calculating Active Vessels and Berth Utilization...")
     # To calculate active vessels accurately per day, we need to count how many vessels overlap with each day.

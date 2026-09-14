@@ -6,39 +6,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './index.css';
 
-// --- API Service Mock ---
 const API_BASE = "http://localhost:8000/api/v1";
 
 const fetchOperationsPlan = async () => {
-  try {
-    const res = await fetch(`${API_BASE}/operations-plan`);
-    if (!res.ok) throw new Error("API not running");
-    return await res.json();
-  } catch (error) {
-    // Return mock data if backend isn't running yet
-    return {
-      executive_summary: "P0 — Approval needed by Wednesday 12:30. Berth 3 is forecast to become congested between 14:00 and 18:00... Reassign Vessel X to Berth 7 and reserve cranes Q2 and Q3.",
-      overall_risk: "HIGH",
-      critical_actions: [
-        {
-          action_id: "act-1001",
-          priority: "P0",
-          description: "Approve Vessel X reassignment from B3 to B7",
-          due_at: new Date().toISOString(),
-          status: "PENDING_APPROVAL"
-        }
-      ],
-      congestion_hotspots: [
-        {
-          berth_id: "B3",
-          start: new Date(Date.now() + 2 * 3600000).toISOString(),
-          end: new Date(Date.now() + 6 * 3600000).toISOString(),
-          probability: 0.91,
-          reasons: ["12 arrivals expected in next 24 hours"]
-        }
-      ]
-    };
-  }
+  const res = await fetch(`${API_BASE}/operations-plan`);
+  if (!res.ok) throw new Error("Operations plan API unavailable");
+  return res.json();
 };
 
 // --- Components ---
@@ -73,7 +46,7 @@ const Sidebar = () => {
           <div className="status-indicator bg-green-500"></div>
           <span className="font-semibold text-white">System Online</span>
         </div>
-        <p className="text-muted">Prediction Model: V1.2<br />Optimizer: Running</p>
+        <p className="text-muted">Mode: Historical simulation<br/>Prediction + optimizer ready</p>
       </div>
     </aside>
   );
@@ -81,18 +54,24 @@ const Sidebar = () => {
 
 const OperationsPlan = () => {
   const [data, setData] = useState(null);
+  const [error, setError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadPlan = async () => {
     setIsRefreshing(true);
-    const nextData = await fetchOperationsPlan();
-    setData(nextData);
+    setError("");
+    try {
+      setData(await fetchOperationsPlan());
+    } catch (requestError) {
+      setError(requestError.message);
+    }
     setIsRefreshing(false);
   };
 
   useEffect(() => { loadPlan(); }, []);
 
-  if (!data) return <div className="plan-loading">Loading 72-hour plan...</div>;
+  if (!data && !error) return <div className="plan-loading">Loading 72-hour plan...</div>;
+  if (error) return <div className="heatmap-error glass-card"><AlertTriangle size={20} /><div><strong>Historical simulation unavailable</strong><p>{error}. Start the API and refresh this view.</p></div><button className="btn btn-secondary" onClick={loadPlan}>Retry</button></div>;
 
   return (
     <div className="operations-page animate-fade-in">
@@ -119,7 +98,7 @@ const OperationsPlan = () => {
           <div className="section-kicker"><Info size={16} /> Executive summary</div>
           <div className="summary-copy">{data.executive_summary}</div>
           <div className="summary-footnote">
-            <span className="live-dot" /> Forecast generated from current model outputs
+          <span className="live-dot" /> Historical schedule simulation · model outputs are decision support
           </div>
         </div>
 
@@ -345,14 +324,15 @@ const BerthAssignments = () => {
       </header>
 
       <section className="assignment-stats">
-        <div className="assignment-stat glass-card"><span>Optimizer status</span><strong className="stat-success">{result.status}</strong><small>{result.constraints_satisfied ? "All constraints satisfied" : "Review constraint violations"}</small></div>
-        <div className="assignment-stat glass-card"><span>Vessels scheduled</span><strong>{assignments.length}</strong><small>Port 1 assignment preview</small></div>
+        <div className="assignment-stat glass-card"><span>Optimizer status</span><strong className={result.constraints_satisfied ? "stat-success" : "stat-warning"}>{result.status}</strong><small>{result.constraints_satisfied ? "All vessels assigned" : `${result.vessels_unassigned || 0} vessels need review`}</small></div>
+        <div className="assignment-stat glass-card"><span>Assignment coverage</span><strong>{Math.round((result.assignment_rate || 0) * 100)}<em>%</em></strong><small>{result.vessels_assigned || assignments.length} of {result.vessels_total || "—"} vessels</small></div>
         <div className="assignment-stat glass-card"><span>Total waiting</span><strong>{totalWait}<em> min</em></strong><small>{waitingCount} vessels delayed</small></div>
         <div className="assignment-stat glass-card"><span>Avg wait / vessel</span><strong>{averageWait}<em> min</em></strong><small>From ETA to service start</small></div>
       </section>
 
       <section className="assignment-table-card glass-card">
         <div className="assignment-table-heading"><div><div className="section-kicker"><Anchor size={16} /> Assignment register</div><h3>Vessel resource schedule</h3></div><span className="timeline-count">Run {result.optimization_run_id}</span></div>
+        {!result.constraints_satisfied && <div className="assignment-warning">{(result.limitations || []).join(" ")}</div>}
         {assignments.length ? <div className="assignment-table-wrap"><table className="assignment-table"><thead><tr><th>Vessel / call</th><th>Arrival</th><th>Assigned berth</th><th>Quay cranes</th><th>Service window</th><th>Waiting</th></tr></thead><tbody>{assignments.map(assignment => <tr key={assignment.vessel_id}>
           <td><strong>Vessel {assignment.vessel_id}</strong><small>Port 1</small></td>
           <td>{new Date(assignment.arrival_time).toLocaleString()}</td>
@@ -430,7 +410,13 @@ const DECISION_META = {
   LIMITED: { label: "🟠 Limited", cls: "dc-limited" },
 };
 
-// Bob-style 2-sentence explanation keyed by portId (cached, not live)
+const fetchRoutingRecommendations = async (vesselId, portId) => {
+  const response = await fetch(`${API_BASE}/alternate-routes?vessel_id=${encodeURIComponent(vesselId)}&port_id=${portId}`);
+  if (!response.ok) throw new Error("Routing API unavailable");
+  return response.json();
+};
+
+// Scenario explanation copy; live routing metrics are loaded from the backend above.
 const BOB_EXPLANATIONS = {
   1: "Chaguaramas is recommended because its 34% congestion level is significantly lower than Port-of-Spain's 91%, and the 0.5-day transit penalty is far outweighed by 4.8 days of expected wait avoided. The diversion is estimated to deliver a net benefit of 4.3 days of delay reduction per vessel.",
   4: "Road Town is recommended as the primary diversion from Spanish Town due to its extremely high route connectivity score (11,550) and a congestion rate of only 38% compared to the origin's 87%. The minimal 0.3-day transit addition yields an estimated 3.9-day net benefit per diverted vessel.",
@@ -440,22 +426,59 @@ const BOB_EXPLANATIONS = {
 };
 
 const AlternateRoutes = () => {
-  const [portId, setPortId] = useState(PORT_IDS[0].id);
-  const [loading, setLoading] = useState(false);
+  const [portId,    setPortId]    = useState(PORT_IDS[0].id);
+  const [loading,   setLoading]   = useState(false);
+  const [liveRecommendations, setLiveRecommendations] = useState(null);
+  const [routingError, setRoutingError] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [issued, setIssued] = useState(false);
+  const [issued,    setIssued]    = useState(false);
+  const [issuedAdvisory, setIssuedAdvisory] = useState(null);
 
   const origin = DIVERSION_DATA[portId] || DIVERSION_DATA[1];
   const winner = origin.alternatives[0];
   const bobText = BOB_EXPLANATIONS[portId] || BOB_EXPLANATIONS[1];
 
-  const simulate = () => {
+  const simulate = async () => {
     setLoading(true);
-    setTimeout(() => setLoading(false), 800);
+    setRoutingError("");
+    try {
+      const result = await fetchRoutingRecommendations("demo-vessel", portId);
+      setLiveRecommendations(result.recommendations || []);
+    } catch (error) {
+      setRoutingError(error.message);
+      setLiveRecommendations(null);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { simulate(); }, [portId]);
 
-  const handleIssue = () => { setShowModal(false); setIssued(true); setTimeout(() => setIssued(false), 4000); };
+  const handleIssue = async () => {
+    setLoading(true);
+    setRoutingError("");
+    try {
+      const response = await fetch(`${API_BASE}/alternate-routes/advisory`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origin_port_id: origin.port_id,
+          alternate_port_id: winner.port_id,
+          vessel_id: "demo-vessel",
+          reason: `Supervisor approved diversion to ${winner.port_name} after reviewing the backend recommendation.`,
+        }),
+      });
+      if (!response.ok) throw new Error("Advisory API unavailable");
+      const advisory = await response.json();
+      setIssuedAdvisory(advisory);
+      setShowModal(false);
+      setIssued(true);
+      window.setTimeout(() => setIssued(false), 5000);
+    } catch (error) {
+      setRoutingError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="diversion-page animate-fade-in">
@@ -466,7 +489,7 @@ const AlternateRoutes = () => {
           <p className="eyebrow">Feature 3 / Regional Diversion Advisory</p>
           <h2>Diversion Command Center</h2>
           <p className="page-subtitle">
-            One congested port. Three alternatives. Real-time diversion recommendation and delay savings.
+            One congested port. Three alternatives. Backend-derived wait estimates with a clearly labeled scenario comparison.
           </p>
         </div>
         <div className="header-actions">
@@ -482,6 +505,32 @@ const AlternateRoutes = () => {
           </button>
         </div>
       </header>
+
+      <div className="glass-card" style={{ marginBottom: '1rem' }}>
+        <div className="section-kicker"><Navigation size={13} /> Backend recommendation status</div>
+        {routingError ? (
+          <p className="text-muted">Live route analysis unavailable: {routingError}. The scenario comparison below is not a live recommendation.</p>
+        ) : liveRecommendations ? (
+          <div>
+            <p className="text-muted">Computed from the routing API and capacity dataset for vessel <strong>demo-vessel</strong>.</p>
+            <div className="dc-live-recommendations">
+              {liveRecommendations.map((recommendation) => (
+                <div key={recommendation.recommended_option.berth_id} className="dc-live-recommendation">
+                  <strong>{recommendation.recommended_option.berth_id}</strong>
+                  <span>{Math.round(recommendation.recommended_option.expected_wait_minutes)} min estimated wait</span>
+                  <small>{recommendation.reason}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted">Run recalculation to load a backend-derived recommendation. The scenario values below are clearly labeled demo data.</p>
+        )}
+      </div>
+
+      <div className="section-kicker" style={{ margin: '0.75rem 0' }}>
+        Scenario comparison · route benefit values are illustrative until a live voyage-cost feed is connected
+      </div>
 
       {/* ── MAIN DECISION GRID: Origin (RED) | Winner (GREEN) ── */}
       <div className="dc-decision-grid">
@@ -607,7 +656,7 @@ const AlternateRoutes = () => {
       <div className="dc-bob glass-card">
         <div className="dc-bob-header">
           <div className="section-kicker"><Info size={13} /> IBM Bob · Regional Diversion Advisory</div>
-          <span className="dc-bob-badge">AI · Cached · No live API call</span>
+          <span className="dc-bob-badge">Scenario explanation · metrics from backend panel above</span>
         </div>
         <p className="dc-bob-text">"{bobText}"</p>
         <div className="dc-bob-footer">
@@ -672,9 +721,9 @@ const AlternateRoutes = () => {
       </div>
 
       {/* ── ISSUED TOAST ── */}
-      {issued && (
+      {issued && issuedAdvisory && (
         <div className="dc-toast">
-          <CheckCircle2 size={18} /> Diversion advisory issued — {winner.port_name} designated as primary alternate
+          <CheckCircle2 size={18} /> Advisory {issuedAdvisory.advisory_id} issued — {winner.port_name} designated as primary alternate in simulation mode
         </div>
       )}
 
@@ -697,7 +746,7 @@ const AlternateRoutes = () => {
               <div><span>Vessels affected</span><strong>{origin.affected_vessels} vessels in forecast window</strong></div>
             </div>
             <div className="dc-modal-actions">
-              <button className="btn dc-issue-btn" onClick={handleIssue}>
+              <button className="btn dc-issue-btn" onClick={handleIssue} disabled={loading}>
                 <CheckCircle2 size={16} /> Confirm &amp; Issue Advisory
               </button>
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>

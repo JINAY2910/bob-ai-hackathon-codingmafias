@@ -40,10 +40,18 @@ class OptimizerOutput(BaseModel):
     assignments: List[BerthAssignment]
     objective: OptimizationObjective
     constraints_satisfied: bool
+    vessels_total: int = 0
+    vessels_assigned: int = 0
+    vessels_unassigned: int = 0
+    assignment_rate: float = 0.0
+    crane_utilization: float = 0.0
+    limitations: List[str] = []
 
 class AlternateOption(BaseModel):
     berth_id: str
     expected_wait_minutes: float
+    port_name: Optional[str] = None
+    available_capacity: Optional[float] = None
 
 class Recommendation(BaseModel):
     vessel_id: str
@@ -56,6 +64,22 @@ class Recommendation(BaseModel):
 
 class RoutingRecommenderOutput(BaseModel):
     recommendations: List[Recommendation]
+
+class DiversionAdvisoryRequest(BaseModel):
+    origin_port_id: int
+    alternate_port_id: int
+    vessel_id: str
+    reason: str
+
+class DiversionAdvisory(BaseModel):
+    advisory_id: str
+    status: str
+    origin_port_id: int
+    alternate_port_id: int
+    vessel_id: str
+    reason: str
+    mode: str
+    issued_at: datetime
 
 class CanonicalEvent(BaseModel):
     event_id: str

@@ -2,13 +2,13 @@ team:
   name: "Coding Mafias"
   track: "Logistics & Ports"
   lead:
-    name: "Yug Yadav"
-    email: "24it112@charusat.edu.in"
+    name: "Bhumi Shah"
+    email: "24it089@charusat.edu.in"
   members:
     - name: "Jinay Shah"
       email: "24it091@charusat.edu.in"
-    - name: "Bhumi Shah"
-      email: "24it089@charusat.edu.in"
+    - name: "Yug Yadav"
+      email: "24it112@charusat.edu.in"
     - name: "Bhavika Patel"
       email: "24it062@charusat.edu.in"
 
