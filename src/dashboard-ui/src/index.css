@@ -254,13 +254,14 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  border: 0 !important;
+  border: 2px solid transparent !important;
   outline: none !important;
   box-shadow: none !important;
+  background-clip: padding-box;
   appearance: none;
   -webkit-appearance: none;
   color: white;
-  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
   font-family: inherit;
 }
 .heatmap-cell.low { background: rgba(63, 185, 80, 0.4); }
@@ -269,8 +270,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .heatmap-cell:hover { opacity: 1 !important; z-index: 10; transform: scale(1.1); }
 .heatmap-cell.selected {
-  outline: 2px solid rgba(255, 255, 255, 0.9);
-  outline-offset: -2px;
+  border-color: rgba(255, 255, 255, 0.95) !important;
   opacity: 1 !important;
   filter: brightness(1.25);
   z-index: 20;
