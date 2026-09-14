@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+import warnings
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -72,8 +73,10 @@ def _load_prediction_rows(port_id: int, start: pd.Timestamp, end: pd.Timestamp) 
     if features.empty:
         return features
 
-    with MODEL_FILE.open("rb") as model_file:
-        model = pickle.load(model_file)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=UserWarning)
+        with MODEL_FILE.open("rb") as model_file:
+            model = pickle.load(model_file)
     features[MODEL_FEATURES] = features[MODEL_FEATURES].apply(pd.to_numeric, errors="coerce").fillna(0)
     features["congestion_probability"] = model.predict_proba(features[MODEL_FEATURES])[:, 1]
     features["congestion_probability"] = features["congestion_probability"].round(4)
