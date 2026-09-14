@@ -109,4 +109,8 @@ def calculate_alternate_routes(raw_data_dir, processed_data_dir):
     print(final_df.head(5).to_string())
 
 if __name__ == "__main__":
-    calculate_alternate_routes("data/raw", "data/processed")
+    # Ensure it works regardless of where the user runs it from
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    raw_dir = os.path.join(base_dir, "data", "raw")
+    processed_dir = os.path.join(base_dir, "data", "processed")
+    calculate_alternate_routes(raw_dir, processed_dir)

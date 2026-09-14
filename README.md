@@ -23,10 +23,29 @@ PortFlow predicts congestion hotspots ahead of time using vessel schedule and be
 Our solution utilizes Python (FastAPI) for the prediction and optimisation backend. We leverage a lightweight optimisation library (such as OR-Tools or a Pyomo/CBC model) for berth-crane assignment. The dashboard is built using React to provide a fast and responsive user interface, while PostgreSQL or SQLite is used for schedule and berth data. We also use IBM Bob for planning and building the pipeline.
 
 ## How to Run
-1. Install Python 3.10+ and Node.js 18+.
-2. Clone this repository and place your dataset files into the `data/raw/` directory.
-3. Copy `src/.env.example` to `src/.env` and update the variables as needed.
-4. Run the data ingestion script and backend server using `python -m src.api.main` (from `src/` folder) and start the frontend using `npm run dev` in the `src/dashboard/` folder.
+
+**1. Start the FastAPI Backend**
+Run the backend server from the root of the project:
+```bash
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**2. Start the React Dashboard**
+In a new terminal window, start the frontend development server:
+```bash
+cd src/dashboard-ui
+npm run dev
+```
+
+**3. Run the ML Pipelines (Standalone)**
+You can also run the underlying data engineering and machine learning scripts directly:
+```bash
+python src/data_processing.py
+python src/feature_engineering.py
+python src/train_model.py
+python src/optimizer/run_optimizer.py
+python src/routing/alternate_routing.py
+```
 
 ## Demo
 - **Video**: [Demo Video Link](./demo/demo-video-link.txt)
