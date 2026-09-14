@@ -37,6 +37,12 @@ cd src/dashboard-ui
 npm run dev
 ```
 
+The dashboard includes a **3D Port Replay** view. It reads the schedule-backed scene from:
+```text
+GET /api/v1/visualization/scene?port_id=1&at=2019-01-03T12:00:00Z
+```
+The replay shows simulated vessel movement, berth risk, crane status, routes, direction, and service/departure times. Positions are derived from the historical schedule and are not live AIS positions.
+
 **3. Run the ML Pipelines (Standalone)**
 You can also run the underlying data engineering and machine learning scripts directly:
 ```bash

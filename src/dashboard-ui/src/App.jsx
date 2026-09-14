@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Ship, Anchor, CalendarClock, AlertTriangle, Info, CheckCircle2, Navigation } from 'lucide-react';
+import { LayoutDashboard, Ship, Anchor, CalendarClock, AlertTriangle, Info, CheckCircle2, Navigation, Play, Pause, RotateCcw } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import './index.css';
 
 // --- API Service Mock ---
@@ -47,6 +50,7 @@ const Sidebar = () => {
     { path: "/hotspots", icon: <AlertTriangle size={20} />, label: "Congestion Heatmap" },
     { path: "/berths", icon: <Anchor size={20} />, label: "Berth Assignments" },
     { path: "/routing", icon: <Navigation size={20} />, label: "Alternate Routes" },
+    { path: "/visualization", icon: <Ship size={20} />, label: "3D Port Replay" },
   ];
 
   return (
@@ -218,6 +222,182 @@ const Placeholder = ({ title }) => (
   </div>
 );
 
+const SCENE_TIME = "2019-01-03T12:00:00Z";
+
+const fetchScene = async (timestamp) => {
+  const res = await fetch(`${API_BASE}/visualization/scene?port_id=1&at=${encodeURIComponent(timestamp)}`);
+  if (!res.ok) throw new Error("Visualization API unavailable");
+  return res.json();
+};
+
+const sceneColor = (status) => ({
+  CONGESTED: "#ef4444",
+  HIGH_UTILIZATION: "#f59e0b",
+  ASSIGNED: "#3b82f6",
+  AVAILABLE: "#10b981",
+  MAINTENANCE: "#64748b",
+}[status] || "#64748b");
+
+const vesselColor = (status, risk) => {
+  if (status === "DEPARTED") return "#64748b";
+  if (risk === "HIGH") return "#ef4444";
+  if (status === "WAITING") return "#f59e0b";
+  if (status === "SERVICING") return "#10b981";
+  return "#38bdf8";
+};
+
+const mapIcon = (color, heading = 0, selected = false) => L.divIcon({
+  className: 'ship-map-icon',
+  html: `<span style="background:${color};transform:rotate(${heading}deg);${selected ? 'box-shadow:0 0 0 5px rgba(255,255,255,.45),0 0 20px ' + color : ''}"></span>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+});
+
+const berthIcon = (color) => L.divIcon({
+  className: 'berth-map-icon',
+  html: `<span style="border-color:${color};box-shadow:0 0 14px ${color}"></span>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+const PortReplay = () => {
+  const [scene, setScene] = useState(null);
+  const [hours, setHours] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const baseTime = new Date(SCENE_TIME);
+  const replayTime = new Date(baseTime.getTime() + hours * 3600000);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timestamp = replayTime.toISOString();
+    fetchScene(timestamp)
+      .then((data) => { if (!cancelled) setScene(data); })
+      .catch(() => { if (!cancelled) setScene(null); });
+    return () => { cancelled = true; };
+  }, [hours]);
+
+  useEffect(() => {
+    if (!playing) return undefined;
+    const timer = window.setInterval(() => {
+      setHours((value) => {
+        if (value >= 72) {
+          setPlaying(false);
+          return 0;
+        }
+        return value + 1;
+      });
+    }, 900);
+    return () => window.clearInterval(timer);
+  }, [playing]);
+
+  const chosenVessel = scene?.vessels.find((vessel) => vessel.id === selected);
+
+  if (!scene) {
+    return <div className="glass-card text-muted">Loading schedule replay. Start the FastAPI backend to view the scene.</div>;
+  }
+
+  return (
+    <div className="animate-fade-in replay-page">
+      <div className="replay-header">
+        <div>
+          <h2 className="text-2xl font-bold">3D Port Operations Replay</h2>
+          <p className="text-muted">Schedule-based digital twin of {scene.port.name}</p>
+        </div>
+        <span className={`badge ${scene.summary.overall_risk === 'HIGH' ? 'badge-danger' : 'badge-warning'}`}>
+          {scene.summary.overall_risk} PORT RISK
+        </span>
+      </div>
+
+      <div className="replay-stats">
+        <div><strong>{scene.summary.incoming_vessels}</strong><span>approaching</span></div>
+        <div><strong>{scene.summary.waiting_vessels}</strong><span>waiting</span></div>
+        <div><strong>{scene.summary.servicing_vessels}</strong><span>servicing</span></div>
+        <div><strong>{Math.round(scene.summary.congestion_probability * 100)}%</strong><span>peak risk</span></div>
+      </div>
+
+      <div className="replay-layout">
+        <div className="replay-stage glass-panel">
+          <div className="scene-legend">
+            <span><i className="legend-dot incoming" /> Incoming</span>
+            <span><i className="legend-dot waiting" /> Waiting</span>
+            <span><i className="legend-dot service" /> Servicing</span>
+            <span><i className="legend-dot danger" /> Congested berth</span>
+          </div>
+          <div className="map-wrapper">
+            <MapContainer center={scene.port.coordinates} zoom={11} minZoom={3} maxZoom={18} scrollWheelZoom className="real-map">
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <CircleMarker center={scene.port.coordinates} radius={10} pathOptions={{ color: '#a78bfa', fillColor: '#7c3aed', fillOpacity: .5 }}>
+                <Popup><strong>{scene.port.name}</strong><br />Port operations center</Popup>
+              </CircleMarker>
+              {scene.routes.map((route) => (
+                <Polyline key={route.vessel_id} positions={route.map_coordinates} pathOptions={{ color: route.status === 'WAITING' ? '#f59e0b' : '#38bdf8', weight: 2, opacity: .65, dashArray: route.status === 'WAITING' ? '6 8' : '3 8' }} />
+              ))}
+              {scene.berths.map((berth) => (
+                <Marker key={berth.id} position={[scene.port.coordinates[0] + (berth.position[1] - 50) * .012, scene.port.coordinates[1] + (berth.position[0] - 50) * .018]} icon={berthIcon(sceneColor(berth.status))}>
+                  <Popup>
+                    <strong>{berth.name}</strong><br />
+                    Status: {berth.status}<br />
+                    Risk: {Math.round(berth.congestion_probability * 100)}%<br />
+                    Cranes: {berth.cranes.length}
+                  </Popup>
+                </Marker>
+              ))}
+              {scene.vessels.map((vessel) => (
+                <Marker key={vessel.id} position={vessel.map_position} icon={mapIcon(vesselColor(vessel.status, vessel.risk_level), vessel.heading, selected === vessel.id)} eventHandlers={{ click: () => setSelected(vessel.id) }}>
+                  <Popup>
+                    <strong>Vessel {vessel.id}</strong><br />
+                    Status: {vessel.status}<br />
+                    Berth: {vessel.assigned_berth_id}<br />
+                    Heading: {Math.round(vessel.heading)}°
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+            <div className="map-overlay-label map-scale-label">REAL-WORLD SCHEDULE REPLAY</div>
+            <div className="map-overlay-label map-help-label">Scroll to zoom · drag to pan · click a ship or berth</div>
+          </div>
+          <div className="replay-controls">
+            <button className="btn btn-primary" onClick={() => setPlaying((value) => !value)}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? "Pause" : "Play"}</button>
+            <button className="btn btn-secondary" onClick={() => { setHours(0); setPlaying(false); }}><RotateCcw size={16} /> Reset</button>
+            <input type="range" min="0" max="72" value={hours} onChange={(event) => setHours(Number(event.target.value))} />
+            <span className="timeline-time">{replayTime.toLocaleString()}</span>
+          </div>
+          <p className="replay-notice">{scene.notice}</p>
+        </div>
+
+        <aside className="replay-inspector glass-card">
+          <h3>Live operational state</h3>
+          <p className="text-muted text-small">Click a ship to inspect its movement and departure window.</p>
+          {chosenVessel ? (
+            <div className="ship-inspector">
+              <div className="inspector-title"><span className="ship-preview" style={{ background: vesselColor(chosenVessel.status, chosenVessel.risk_level) }} />Vessel {chosenVessel.id}</div>
+              <span className="badge badge-info">{chosenVessel.status}</span>
+              <dl>
+                <dt>Assigned berth</dt><dd>{chosenVessel.assigned_berth_id}</dd>
+                <dt>Direction</dt><dd>{Math.round(chosenVessel.heading)}° heading</dd>
+                <dt>ETA</dt><dd>{new Date(chosenVessel.eta).toLocaleString()}</dd>
+                <dt>Service end / departure</dt><dd>{chosenVessel.service_end ? new Date(chosenVessel.service_end).toLocaleString() : "Not assigned"}</dd>
+                <dt>Waiting time</dt><dd>{chosenVessel.waiting_minutes} minutes</dd>
+                <dt>Assigned cranes</dt><dd>{chosenVessel.assigned_crane_ids.join(", ") || "None"}</dd>
+              </dl>
+            </div>
+          ) : (
+            <div className="inspector-empty">Select a ship in the scene.</div>
+          )}
+          <div className="inspector-key">
+            <strong>How to read this view</strong>
+            <p>Ships move from the incoming edge to anchorage, then to a berth. Red or amber berth blocks indicate rising operational pressure. Crane dots show availability and live assignment at the replay time.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   return (
     <Router>
@@ -229,6 +409,7 @@ function App() {
             <Route path="/hotspots" element={<Placeholder title="Congestion Heatmap" />} />
             <Route path="/berths" element={<Placeholder title="Berth Assignments" />} />
             <Route path="/routing" element={<Placeholder title="Alternate Routes" />} />
+            <Route path="/visualization" element={<PortReplay />} />
           </Routes>
         </main>
       </div>

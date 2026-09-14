@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from .routes import hotspots, optimization, planning, alternate_routes
+from .routes import hotspots, optimization, planning, alternate_routes, visualization
 
 app = FastAPI(
     title="PortFlow API",
@@ -23,6 +23,7 @@ app.include_router(hotspots.router, prefix="/api/v1/hotspots", tags=["Hotspots"]
 app.include_router(optimization.router, prefix="/api/v1/optimize-berths", tags=["Optimization"])
 app.include_router(alternate_routes.router, prefix="/api/v1/alternate-routes", tags=["Alternate Routing"])
 app.include_router(planning.router, prefix="/api/v1/operations-plan", tags=["72-Hour Plan"])
+app.include_router(visualization.router, prefix="/api/v1/visualization", tags=["Visualization"])
 
 @app.get("/")
 def read_root():
