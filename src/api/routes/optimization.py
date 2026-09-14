@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import pandas as pd
@@ -7,6 +7,7 @@ from src.optimizer.berth_crane_optimizer import optimize_feature2
 
 router = APIRouter()
 RESULTS_DIR = Path("data/feature2/results")
+FEATURE2_DIR = Path("data/feature2")
 
 
 def _load_or_run_optimizer():
@@ -30,15 +31,8 @@ def optimize_berths(port_id: int = 1):
         # Reuse the generated full-result files so opening the UI does not
         # rerun the expensive unbounded optimizer on every request.
         assignments_df, summary_df, source = _load_or_run_optimizer()
-    except Exception as e:
-        # Fallback if data doesn't exist
-        return OptimizerOutput(
-            optimization_run_id=f"opt-failed",
-            status="FAILED",
-            assignments=[],
-            objective=OptimizationObjective(total_wait_minutes=0, berth_conflicts=0, crane_utilization=0),
-            constraints_satisfied=False
-        )
+    except (FileNotFoundError, ValueError, pd.errors.ParserError) as error:
+        raise HTTPException(status_code=503, detail=f"Optimizer inputs are unavailable: {error}") from error
         
     # Get assignments specifically for this port, take a few for the UI
     port_assignments = assignments_df[
@@ -61,16 +55,48 @@ def optimize_berths(port_id: int = 1):
         
     # Get port summary metrics
     port_summary = summary_df[summary_df["port_id"] == port_id]
-    total_wait = float(port_summary.iloc[0]["total_waiting_hours"]) * 60 if not port_summary.empty else 0.0
+    if port_summary.empty:
+        raise HTTPException(status_code=404, detail=f"No optimizer results found for port {port_id}")
+    summary = port_summary.iloc[0]
+    total_wait = float(summary["total_waiting_hours"]) * 60
+
+    cranes = pd.read_csv(FEATURE2_DIR / "optimizer_cranes.csv")
+    cranes = cranes[(cranes["port_id"] == port_id) & cranes["status"].astype(str).str.lower().isin({"operational", "available"})].copy()
+    cranes["available_from"] = pd.to_datetime(cranes["available_from"], errors="coerce")
+    cranes["available_to"] = pd.to_datetime(cranes["available_to"], errors="coerce")
+    available_hours = ((cranes["available_to"] - cranes["available_from"]).dt.total_seconds() / 3600).clip(lower=0).sum()
+    assigned = assignments_df[(assignments_df["port_id"] == port_id) & assignments_df["status"].eq("assigned")].copy()
+    assigned["service_start"] = pd.to_datetime(assigned["service_start"], errors="coerce")
+    assigned["service_end"] = pd.to_datetime(assigned["service_end"], errors="coerce")
+    assigned_crane_hours = 0.0
+    for _, row in assigned.iterrows():
+        duration = (row["service_end"] - row["service_start"]).total_seconds() / 3600 if pd.notna(row["service_start"]) and pd.notna(row["service_end"]) else 0
+        crane_count = len(str(row.get("assigned_crane_ids") or "").split("|")) if pd.notna(row.get("assigned_crane_ids")) else 0
+        assigned_crane_hours += max(duration, 0) * crane_count
+    crane_utilization = assigned_crane_hours / available_hours if available_hours else 0.0
+    vessels_total = int(summary["vessels_total"])
+    vessels_assigned = int(summary["vessels_assigned"])
+    vessels_unassigned = int(summary["vessels_unassigned"])
+    assignment_rate = float(summary["assignment_rate"])
+    limitations = []
+    if vessels_unassigned:
+        limitations.append(f"{vessels_unassigned:,} vessels have no feasible berth/crane assignment in the current horizon.")
+    limitations.append("This is a deterministic scheduling heuristic over the supplied historical schedule.")
 
     return OptimizerOutput(
         optimization_run_id=f"opt-{now.strftime('%Y-%m-%d')}-{port_id}",
-        status="FEASIBLE_CACHED" if source == "cached" else "FEASIBLE",
+        status=("PARTIAL_CACHED" if source == "cached" else "PARTIAL") if vessels_unassigned else ("FEASIBLE_CACHED" if source == "cached" else "FEASIBLE"),
         assignments=berth_assignments,
         objective=OptimizationObjective(
             total_wait_minutes=total_wait,
             berth_conflicts=0,
-            crane_utilization=0.82 
+            crane_utilization=round(crane_utilization, 4)
         ),
-        constraints_satisfied=True
+        constraints_satisfied=vessels_unassigned == 0,
+        vessels_total=vessels_total,
+        vessels_assigned=vessels_assigned,
+        vessels_unassigned=vessels_unassigned,
+        assignment_rate=assignment_rate,
+        crane_utilization=round(crane_utilization, 4),
+        limitations=limitations,
     )

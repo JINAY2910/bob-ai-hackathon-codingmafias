@@ -265,6 +265,16 @@ def generate_operations_plan(
     assignments = _load_assignments(port_id)
     predictions = _load_prediction_rows(port_id, start, end)
     alternates = _load_alternates(port_id)
+    horizon_assignments = _assignments_in_window(assignments, start, end)
+    assigned_horizon = horizon_assignments[horizon_assignments["status"].astype(str).str.lower().eq("assigned")]
+    average_wait_hours = float(assigned_horizon["waiting_time_hours"].mean()) if not assigned_horizon.empty else 0.0
+    max_wait_hours = float(assigned_horizon["waiting_time_hours"].max()) if not assigned_horizon.empty else 0.0
+    unassigned_horizon = int((horizon_assignments["status"].astype(str).str.lower() != "assigned").sum())
+    assignment_rate = (
+        float(len(assigned_horizon) / len(horizon_assignments))
+        if len(horizon_assignments)
+        else 0.0
+    )
 
     shifts = []
     all_hotspots = []
@@ -301,7 +311,12 @@ def generate_operations_plan(
         "resource_plan": [{
             "port_id": port_id,
             "alternate_ports": alternates,
-            "vessels_in_horizon": int(len(_assignments_in_window(assignments, start, end))),
+            "vessels_in_horizon": int(len(horizon_assignments)),
+            "vessels_assigned": int(len(assigned_horizon)),
+            "vessels_unassigned": unassigned_horizon,
+            "assignment_rate": round(assignment_rate, 4),
+            "average_wait_hours": round(average_wait_hours, 2),
+            "maximum_wait_hours": round(max_wait_hours, 2),
         }],
         "contingencies": [item for shift in shifts for item in shift["contingencies"]],
         "assumptions": [

@@ -46,24 +46,24 @@ def extract_plan_summary_dict(plan_data: Dict[str, Any]) -> Dict[str, Any]:
     hotspots = plan_data.get("congestion_hotspots", [])
     max_prob = max((h.get("probability", 0.0) for h in hotspots), default=0.87)
     
-    # 3. Affected Vessels
+    # 3. Horizon assignment metrics
     affected_vessels = 0
+    assigned_vessels = 0
+    unassigned_vessels = 0
+    assignment_rate = 0.0
+    waiting_hours = 0.0
     if resource_plans and isinstance(resource_plans, list):
-        affected_vessels = resource_plans[0].get("vessels_in_horizon", 0)
+        resource = resource_plans[0]
+        affected_vessels = resource.get("vessels_in_horizon", 0)
+        assigned_vessels = resource.get("vessels_assigned", 0)
+        unassigned_vessels = resource.get("vessels_unassigned", 0)
+        assignment_rate = resource.get("assignment_rate", 0.0)
+        waiting_hours = resource.get("average_wait_hours", 0.0)
     if not affected_vessels and hotspots:
         affected_vessels = len(hotspots) * 3
 
-    # 4. Utilization & Waiting
-    # Approximate utilization based on risk profile
-    berth_utilization = 0.94 if overall_risk == "HIGH" else (0.75 if overall_risk == "MEDIUM" else 0.45)
-    waiting_hours = 6.4 if overall_risk == "HIGH" else 1.5
-
-    # 5. Recommended Cranes & Alternative Port
-    recommended_cranes = 4
-    critical_actions = plan_data.get("critical_actions", [])
-    if critical_actions:
-        recommended_cranes = 4
-        
+    # 4. Use only metrics calculated by the planning pipeline.
+    berth_utilization = None
     alt_port = None
     if resource_plans and isinstance(resource_plans, list):
         alt_ports = resource_plans[0].get("alternate_ports", [])
@@ -75,9 +75,10 @@ def extract_plan_summary_dict(plan_data: Dict[str, Any]) -> Dict[str, Any]:
         "congestion": overall_risk,
         "congestion_probability": round(float(max_prob), 2),
         "affected_vessels": int(affected_vessels),
-        "berth_utilization": berth_utilization,
-        "waiting_hours": waiting_hours,
-        "recommended_cranes": recommended_cranes,
+        "assigned_vessels": int(assigned_vessels),
+        "unassigned_vessels": int(unassigned_vessels),
+        "assignment_rate": round(float(assignment_rate), 4),
+        "average_wait_hours": round(float(waiting_hours), 2),
         "alternative_port": alt_port or "Chaguaramas"
     }
 
@@ -88,17 +89,19 @@ def create_fallback_summary(plan: Dict[str, Any]) -> str:
     """
     congestion = plan.get("congestion", "HIGH")
     port = plan.get("port", "Port 1")
-    utilization = plan.get("berth_utilization", 0.94)
     vessels = plan.get("affected_vessels", 7)
-    waiting = plan.get("waiting_hours", 6.4)
-    cranes = plan.get("recommended_cranes", 4)
+    assigned = plan.get("assigned_vessels", 0)
+    unassigned = plan.get("unassigned_vessels", 0)
+    rate = plan.get("assignment_rate", 0.0)
+    waiting = plan.get("average_wait_hours", 0.0)
     alt_port = plan.get("alternative_port", "Chaguaramas")
-    
+
     alt_text = f" Keep {alt_port} as an alternative." if alt_port else ""
     return (
         f"{congestion} congestion risk at {port}. "
-        f"Berth utilization is {utilization:.0%}, with {vessels} vessels affected and {waiting:.1f} hours of expected waiting. "
-        f"Prioritize high-risk vessels and allocate {cranes} cranes where feasible.{alt_text}"
+        f"{vessels} vessels are in the horizon; {assigned} are assigned and {unassigned} remain unassigned "
+        f"({rate:.0%} assignment coverage), with {waiting:.1f} hours average wait. "
+        f"Prioritize high-risk vessels and review the next feasible berth plan.{alt_text}"
     )
 
 

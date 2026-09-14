@@ -218,6 +218,42 @@ h3 { font-size: 1.25rem; }
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
+.stat-warning {
+  color: var(--status-warning);
+}
+
+.assignment-warning {
+  margin: 0 1.5rem 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 0.6rem;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  font-size: 0.85rem;
+}
+
+.dc-live-recommendations {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.dc-live-recommendation {
+  display: grid;
+  grid-template-columns: 10rem 12rem 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 0.55rem;
+  background: rgba(59, 130, 246, 0.07);
+  font-size: 0.85rem;
+}
+
+.dc-live-recommendation small {
+  color: var(--text-muted);
+}
+
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out forwards;
 }

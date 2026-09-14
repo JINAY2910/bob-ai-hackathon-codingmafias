@@ -1,5 +1,6 @@
 # PortFlow
 
+<<<<<<< Updated upstream
 **Track:** Logistics & Ports
 
 **Team:** Coding Mafias
@@ -9,6 +10,15 @@
 *   **Bhavika Patel** - `24it062@charusat.edu.in`
 
 ---
+=======
+> **Demo mode:** PortFlow currently runs as a historical schedule simulator using 2019 public data. It is not connected to live AIS or port sensors. All forecasts and assignments should be treated as decision-support outputs, not production dispatch instructions.
+
+## Team
+- **Team Name**: Coding Mafias
+- **Track**: Logistics & Ports
+- **Lead**: Yug Yadav
+- **Members**: Jinay Shah, Bhumi Shah, Bhavika Patel
+>>>>>>> Stashed changes
 
 ## Problem Statement
 
@@ -35,6 +45,7 @@ PortFlow is an End-to-End Predictive Command Center. It uses an XGBoost AI model
 
 ## How to Run
 
+<<<<<<< Updated upstream
 Please see [`docs/setup-guide.md`](docs/setup-guide.md) for complete, step-by-step instructions on running the backend and frontend simultaneously.
 
 ## Demo
@@ -42,6 +53,51 @@ Please see [`docs/setup-guide.md`](docs/setup-guide.md) for complete, step-by-st
 *   **Demo Video:** [View our 3-minute Demo Video](demo/demo-video-link.txt)
 *   **Live App:** [NOT DEPLOYED](demo/live-demo-url.txt)
 *   **Screenshots:** See the `demo/screenshots/` folder.
+=======
+**1. Install backend dependencies**
+```bash
+python -m pip install -r requirements.txt
+```
+
+**2. Start the FastAPI Backend**
+Run the backend server from the root of the project:
+```bash
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**3. Start the React Dashboard**
+In a new terminal window, start the frontend development server:
+```bash
+cd src/dashboard-ui
+npm run dev
+```
+
+The dashboard includes a **3D Port Replay** view. It reads the schedule-backed scene from:
+```text
+GET /api/v1/visualization/scene?port_id=1&at=2019-01-03T12:00:00Z
+```
+The replay shows simulated vessel movement, berth risk, crane status, routes, direction, and service/departure times. Positions are derived from the historical schedule and are not live AIS positions.
+
+The backend health check is available at `http://localhost:8000/health` and reports
+`historical-simulation` mode so the UI never has to imply that the data is live.
+
+**4. Run the ML Pipelines (Standalone)**
+You can also run the underlying data engineering and machine learning scripts directly:
+```bash
+python src/data_processing.py
+python src/feature_engineering.py
+python src/train_model.py
+python src/optimizer/run_optimizer.py
+python src/routing/alternate_routing.py
+```
+
+## Demo
+- **Video**: [Demo Video Link](./demo/demo-video-link.txt)
+- **Live Demo**: NOT DEPLOYED
+- **Screenshots**: [View Screenshots](./demo/screenshots)
+- **Judge Runbook**: [Three-minute demo script](./docs/demo-runbook.md)
+- **Implementation Changes**: [Complete change summary](./docs/implementation-changes.md)
+>>>>>>> Stashed changes
 
 ## Known Limitations
 

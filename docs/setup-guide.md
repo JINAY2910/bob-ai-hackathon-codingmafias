@@ -3,13 +3,19 @@
 This guide provides exact instructions to run the PortFlow application locally.
 
 ## Prerequisites
+<<<<<<< Updated upstream
 *   Python 3.10+
 *   Node.js 18+ and npm
 *   IBM Bob CLI (`bob` command available in your PATH)
 *   An active IBM Bob API Key
+=======
+- Python 3.10+
+- Node.js 18+ (for the React dashboard)
+>>>>>>> Stashed changes
 
 ## Environment Setup
 
+<<<<<<< Updated upstream
 Our application uses a `.env` file for the backend and LLM integration. 
 
 1. Create a `.env` file in the `src/` directory.
@@ -61,6 +67,54 @@ npm run dev
 2. You should see the PortFlow Dashboard UI load successfully.
 3. Click on a specific Port (e.g., "Port 1") to view its 72-Hour Operations Plan.
 4. **Verifying IBM Bob:** At the top of the operations plan, you should see a short, plain-English summary (e.g., *"HIGH congestion risk at Port 1..."*). If you see this summary, the FastAPI backend has successfully contacted the IBM Bob CLI using your `.env` credentials!
+=======
+## Data Setup
+1. The repository includes the processed demo dataset used by the historical simulator.
+2. To rebuild it from raw files, run:
+   ```bash
+   python src/data_processing.py
+   python src/feature_engineering.py
+   python src/train_model.py
+   python src/optimizer/run_optimizer.py
+   python src/routing/alternate_routing.py
+   ```
+
+## Installation & Running
+1. Install Python dependencies:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+2. Install Node.js dependencies for the dashboard:
+   ```bash
+   cd src/dashboard-ui/
+   npm install
+   ```
+3. Start the backend server:
+   ```bash
+   python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
+   ```
+4. Start the frontend dashboard:
+   ```bash
+   cd src/dashboard-ui/
+   npm run dev
+   ```
+
+## Verification
+To verify the system is working, open the Vite URL shown in the terminal. The API health check is `http://localhost:8000/health`.
+
+To verify the supervisor decision loop:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/api/v1/alternate-routes?vessel_id=demo-vessel&port_id=1"
+Invoke-RestMethod -Method Post `
+  -Uri "http://localhost:8000/api/v1/alternate-routes/advisory" `
+  -ContentType "application/json" `
+  -Body '{"origin_port_id":1,"alternate_port_id":98,"vessel_id":"demo-vessel","reason":"Supervisor approved the backend recommendation."}'
+Invoke-RestMethod "http://localhost:8000/api/v1/alternate-routes/advisories"
+```
+
+Advisories are intentionally held in process memory because this submission is a historical simulation. Restarting the API clears them.
+>>>>>>> Stashed changes
 
 ## Troubleshooting
 
