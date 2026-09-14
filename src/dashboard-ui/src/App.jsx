@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Ship, Anchor, CalendarClock, AlertTriangle, Info, CheckCircle2, Navigation, Play, Pause, RotateCcw, Gauge } from 'lucide-react';
+import { LayoutDashboard, Ship, Anchor, CalendarClock, AlertTriangle, Info, CheckCircle2, Navigation, Play, Pause, RotateCcw, Gauge, ArrowRight, MapPin, Waves, Star, TrendingUp, Filter, Search } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -366,14 +366,368 @@ const BerthAssignments = () => {
   );
 };
 
-const Placeholder = ({ title }) => (
-  <div className="animate-fade-in flex flex-col gap-6 h-full">
-    <h2 className="text-2xl font-bold mb-1">{title}</h2>
-    <div className="glass-card flex-1 flex items-center justify-center text-muted">
-      <p>{title} visualizations will render here.</p>
+// ── Regional Diversion Advisory — Diversion Command Center ─────────────────
+// Data derived from data/feature3/alternate_routes.csv + F1 congestion outputs
+const DIVERSION_DATA = {
+  1: {
+    port_id: 1, port_name: "Port-of-Spain", country: "Trinidad & Tobago",
+    congestion_pct: 91, expected_wait_hrs: 6.4, affected_vessels: 15,
+    alternatives: [
+      { rank: 1, port_id: 98,  port_name: "Chaguaramas",    country: "Trinidad & Tobago",     congestion_pct: 34, extra_transit_days: 0.5, delay_avoided_days: 4.8, net_benefit_days: 4.3, available_berths: 38, viability_score: 3024.0,  decision: "BEST",     diversion_type: "NEARBY",    distance_km: 18  },
+      { rank: 2, port_id: 73,  port_name: "Point Lisas",    country: "Trinidad & Tobago",     congestion_pct: 51, extra_transit_days: 1.2, delay_avoided_days: 3.1, net_benefit_days: 1.9, available_berths: 31, viability_score: 2152.5,  decision: "CONSIDER", diversion_type: "NEARBY",    distance_km: 32  },
+      { rank: 3, port_id: 38,  port_name: "Scarborough",    country: "Trinidad & Tobago",     congestion_pct: 22, extra_transit_days: 2.8, delay_avoided_days: 4.5, net_benefit_days: 1.7, available_berths: 1,  viability_score: 1731.4,  decision: "LIMITED",  diversion_type: "EMERGENCY", distance_km: 110 },
+    ],
+  },
+  4: {
+    port_id: 4, port_name: "Spanish Town", country: "British Virgin Islands",
+    congestion_pct: 87, expected_wait_hrs: 5.8, affected_vessels: 12,
+    alternatives: [
+      { rank: 1, port_id: 52,  port_name: "Road Town",      country: "British Virgin Islands", congestion_pct: 38, extra_transit_days: 0.3, delay_avoided_days: 4.2, net_benefit_days: 3.9, available_berths: 8,  viability_score: 11550.6, decision: "BEST",     diversion_type: "NEARBY",    distance_km: 24  },
+      { rank: 2, port_id: 76,  port_name: "St Thomas",      country: "US Virgin Islands",      congestion_pct: 45, extra_transit_days: 0.8, delay_avoided_days: 3.5, net_benefit_days: 2.7, available_berths: 18, viability_score: 753.2,   decision: "CONSIDER", diversion_type: "NEARBY",    distance_km: 55  },
+      { rank: 3, port_id: 31,  port_name: "Philipsburg",    country: "Sint Maarten",           congestion_pct: 28, extra_transit_days: 1.5, delay_avoided_days: 3.8, net_benefit_days: 2.3, available_berths: 11, viability_score: 50.4,    decision: "LIMITED",  diversion_type: "EMERGENCY", distance_km: 220 },
+    ],
+  },
+  5: {
+    port_id: 5, port_name: "Fort-de-France", country: "Martinique",
+    congestion_pct: 84, expected_wait_hrs: 5.2, affected_vessels: 11,
+    alternatives: [
+      { rank: 1, port_id: 79,  port_name: "Pointe-a-Pitre", country: "Guadeloupe",            congestion_pct: 41, extra_transit_days: 0.6, delay_avoided_days: 3.9, net_benefit_days: 3.3, available_berths: 20, viability_score: 1971.0,  decision: "BEST",     diversion_type: "NEARBY",    distance_km: 165 },
+      { rank: 2, port_id: 35,  port_name: "Castries",       country: "Saint Lucia",           congestion_pct: 55, extra_transit_days: 1.0, delay_avoided_days: 2.8, net_benefit_days: 1.8, available_berths: 3,  viability_score: 877.5,   decision: "CONSIDER", diversion_type: "NEARBY",    distance_km: 82  },
+      { rank: 3, port_id: 69,  port_name: "Roseau",         country: "Dominica",              congestion_pct: 26, extra_transit_days: 1.8, delay_avoided_days: 3.7, net_benefit_days: 1.9, available_berths: 1,  viability_score: 473.0,   decision: "LIMITED",  diversion_type: "EMERGENCY", distance_km: 120 },
+    ],
+  },
+  35: {
+    port_id: 35, port_name: "Castries", country: "Saint Lucia",
+    congestion_pct: 78, expected_wait_hrs: 4.8, affected_vessels: 9,
+    alternatives: [
+      { rank: 1, port_id: 5,   port_name: "Fort-de-France", country: "Martinique",            congestion_pct: 42, extra_transit_days: 0.7, delay_avoided_days: 3.2, net_benefit_days: 2.5, available_berths: 12, viability_score: 1485.0,  decision: "BEST",     diversion_type: "NEARBY",    distance_km: 82  },
+      { rank: 2, port_id: 110, port_name: "Bridgetown",     country: "Barbados",              congestion_pct: 38, extra_transit_days: 1.2, delay_avoided_days: 3.0, net_benefit_days: 1.8, available_berths: 6,  viability_score: 659.2,   decision: "CONSIDER", diversion_type: "NEARBY",    distance_km: 175 },
+      { rank: 3, port_id: 79,  port_name: "Pointe-a-Pitre", country: "Guadeloupe",           congestion_pct: 35, extra_transit_days: 1.8, delay_avoided_days: 3.5, net_benefit_days: 1.7, available_berths: 20, viability_score: 354.0,   decision: "LIMITED",  diversion_type: "NEARBY",    distance_km: 165 },
+    ],
+  },
+  52: {
+    port_id: 52, port_name: "Road Town", country: "British Virgin Islands",
+    congestion_pct: 82, expected_wait_hrs: 5.5, affected_vessels: 13,
+    alternatives: [
+      { rank: 1, port_id: 4,   port_name: "Spanish Town",   country: "British Virgin Islands", congestion_pct: 43, extra_transit_days: 0.4, delay_avoided_days: 3.8, net_benefit_days: 3.4, available_berths: 4,  viability_score: 8983.8,  decision: "BEST",     diversion_type: "NEARBY",    distance_km: 24  },
+      { rank: 2, port_id: 76,  port_name: "St Thomas",      country: "US Virgin Islands",      congestion_pct: 45, extra_transit_days: 0.6, delay_avoided_days: 3.5, net_benefit_days: 2.9, available_berths: 18, viability_score: 8229.2,  decision: "CONSIDER", diversion_type: "NEARBY",    distance_km: 40  },
+      { rank: 3, port_id: 200, port_name: "San Juan",       country: "Puerto Rico",            congestion_pct: 32, extra_transit_days: 1.4, delay_avoided_days: 3.8, net_benefit_days: 2.4, available_berths: 22, viability_score: 1328.0,  decision: "CONSIDER", diversion_type: "NEARBY",    distance_km: 145 },
+    ],
+  },
+};
+
+const PORT_IDS = [
+  { id: 1,  name: "Port-of-Spain"  },
+  { id: 4,  name: "Spanish Town"   },
+  { id: 5,  name: "Fort-de-France" },
+  { id: 35, name: "Castries"       },
+  { id: 52, name: "Road Town"      },
+];
+
+const DECISION_META = {
+  BEST:     { label: "🟢 Best",      cls: "dc-best"    },
+  CONSIDER: { label: "🟡 Consider",  cls: "dc-consider" },
+  LIMITED:  { label: "🟠 Limited",   cls: "dc-limited"  },
+};
+
+// Bob-style 2-sentence explanation keyed by portId (cached, not live)
+const BOB_EXPLANATIONS = {
+  1:  "Chaguaramas is recommended because its 34% congestion level is significantly lower than Port-of-Spain's 91%, and the 0.5-day transit penalty is far outweighed by 4.8 days of expected wait avoided. The diversion is estimated to deliver a net benefit of 4.3 days of delay reduction per vessel.",
+  4:  "Road Town is recommended as the primary diversion from Spanish Town due to its extremely high route connectivity score (11,550) and a congestion rate of only 38% compared to the origin's 87%. The minimal 0.3-day transit addition yields an estimated 3.9-day net benefit per diverted vessel.",
+  5:  "Pointe-a-Pitre is the preferred diversion from Fort-de-France with a congestion level of 41% versus the origin's 84%, and strong inter-island connectivity with 20 available berths. An estimated 3.3-day net delay benefit is expected despite the 0.6-day additional transit.",
+  35: "Fort-de-France offers the strongest diversion option from Castries with 12 available berths, 42% congestion, and high regional traffic volume. The estimated 2.5-day net benefit per vessel makes it the clearly preferred alternative over the current 78% congestion at origin.",
+  52: "Spanish Town is the top diversion candidate from Road Town due to its very high viability score (8,983) and 43% congestion versus the origin's 82%. The short 0.4-day transit addition is expected to yield a 3.4-day net delay benefit per vessel.",
+};
+
+const AlternateRoutes = () => {
+  const [portId,    setPortId]    = useState(PORT_IDS[0].id);
+  const [loading,   setLoading]   = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [issued,    setIssued]    = useState(false);
+
+  const origin = DIVERSION_DATA[portId] || DIVERSION_DATA[1];
+  const winner = origin.alternatives[0];
+  const bobText = BOB_EXPLANATIONS[portId] || BOB_EXPLANATIONS[1];
+
+  const simulate = () => {
+    setLoading(true);
+    setTimeout(() => setLoading(false), 800);
+  };
+  useEffect(() => { simulate(); }, [portId]);
+
+  const handleIssue = () => { setShowModal(false); setIssued(true); setTimeout(() => setIssued(false), 4000); };
+
+  return (
+    <div className="diversion-page animate-fade-in">
+
+      {/* ── STORY BAR ── */}
+      <div className="story-bar">
+        <div className="story-step active"><span className="story-icon">🚨</span><span>Problem</span></div>
+        <div className="story-arrow">→</div>
+        <div className="story-step active"><span className="story-icon">🔎</span><span>Analyse</span></div>
+        <div className="story-arrow">→</div>
+        <div className="story-step active story-step-winner"><span className="story-icon">⭐</span><span>Recommend</span></div>
+        <div className="story-arrow">→</div>
+        <div className="story-step active"><span className="story-icon">💰</span><span>Impact</span></div>
+      </div>
+
+      {/* ── HEADER ── */}
+      <header className="operations-header dc-header">
+        <div className="page-heading">
+          <p className="eyebrow">Feature 3 / Regional Diversion Advisory</p>
+          <h2>Diversion Command Center</h2>
+          <p className="page-subtitle">
+            One congested port. Three alternatives. Real-time diversion recommendation and delay savings.
+          </p>
+        </div>
+        <div className="header-actions">
+          <div className="dc-port-selector">
+            <label><MapPin size={12} /> Congested origin</label>
+            <select value={portId} onChange={e => setPortId(Number(e.target.value))} className="routing-select">
+              {PORT_IDS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-primary dc-recalc-btn" onClick={simulate} disabled={loading}>
+            <RotateCcw size={15} className={loading ? "spin" : ""} />
+            {loading ? "Analysing…" : "Recalculate"}
+          </button>
+        </div>
+      </header>
+
+      {/* ── MAIN DECISION GRID: Origin (RED) | Winner (GREEN) ── */}
+      <div className="dc-decision-grid">
+
+        {/* Origin — congested */}
+        <div className="dc-origin glass-card">
+          <div className="dc-panel-header-row">
+            <div>
+              <div className="dc-panel-kicker danger"><AlertTriangle size={12} /> Congested Origin</div>
+              <div className="dc-panel-title">{origin.port_name}</div>
+              <div className="dc-panel-sub">{origin.country}</div>
+            </div>
+            <div className="dc-big-ring danger">
+              <strong>{origin.congestion_pct}%</strong>
+              <span>congestion</span>
+            </div>
+          </div>
+
+          <div className="dc-origin-stats">
+            <div className="dc-stat-box">
+              <span>Expected wait</span>
+              <strong className="danger-text">{origin.expected_wait_hrs} hrs</strong>
+            </div>
+            <div className="dc-stat-box">
+              <span>Vessels affected</span>
+              <strong>{origin.affected_vessels}</strong>
+            </div>
+            <div className="dc-stat-box">
+              <span>Risk level</span>
+              <span className="risk-pill high">HIGH</span>
+            </div>
+          </div>
+
+          <div className="dc-origin-footer">
+            <AlertTriangle size={12} /> Diversion advisory active — action required
+          </div>
+        </div>
+
+        {/* Divider arrow */}
+        <div className="dc-arrow-col">
+          <div className="dc-flow-arrow">
+            <span className="dc-flow-line" />
+            <ArrowRight size={20} className="dc-arrow-icon" />
+          </div>
+          <div className="dc-vs-badge">DIVERT TO</div>
+        </div>
+
+        {/* Winner — recommended */}
+        <div className="dc-winner glass-card">
+          <div className="dc-panel-header-row">
+            <div>
+              <div className="dc-panel-kicker winner"><Star size={12} /> Recommended Diversion</div>
+              <div className="dc-panel-title">{winner.port_name}</div>
+              <div className="dc-panel-sub">{winner.country} · {winner.distance_km} km away</div>
+            </div>
+            <div className="dc-big-ring winner">
+              <strong>{winner.congestion_pct}%</strong>
+              <span>congestion</span>
+            </div>
+          </div>
+
+          <div className="dc-winner-grid">
+            <div className="dc-mini-stat">
+              <span>Origin Congestion</span>
+              <strong className="danger-text">{origin.congestion_pct}%</strong>
+            </div>
+            <div className="dc-mini-stat">
+              <span>Extra Transit</span>
+              <strong>+{winner.extra_transit_days}d</strong>
+            </div>
+            <div className="dc-mini-stat">
+              <span>Alternate Congestion</span>
+              <strong className="winner-text">{winner.congestion_pct}%</strong>
+            </div>
+            <div className="dc-mini-stat">
+              <span>Delay Avoided</span>
+              <strong className="winner-text">−{winner.delay_avoided_days}d</strong>
+            </div>
+            <div className="dc-mini-stat net-stat">
+              <span>Net Benefit</span>
+              <strong className="winner-text net-num">+{winner.net_benefit_days}d</strong>
+            </div>
+          </div>
+
+          <button
+            id="issue-diversion-btn"
+            className="btn dc-issue-btn"
+            onClick={() => setShowModal(true)}
+          >
+            <Navigation size={14} />
+            Issue Fleet Diversion Advisory →
+          </button>
+        </div>
+      </div>
+
+      {/* ── IMPACT CARDS ── */}
+      <div className="dc-impact-row">
+        <div className="dc-impact-card glass-card">
+          <div className="section-kicker"><TrendingUp size={12} /> Delay reduction</div>
+          <div className="dc-impact-num winner-text">{winner.net_benefit_days}d</div>
+          <div className="dc-impact-label">delay avoided per vessel</div>
+        </div>
+        <div className="dc-impact-card glass-card">
+          <div className="section-kicker"><Ship size={12} /> Vessels</div>
+          <div className="dc-impact-num" style={{ color: "#60a5fa" }}>{origin.affected_vessels}</div>
+          <div className="dc-impact-label">vessels redirected</div>
+        </div>
+        <div className="dc-impact-card glass-card">
+          <div className="section-kicker"><Gauge size={12} /> Exposure</div>
+          <div className="dc-impact-num" style={{ color: "#f59e0b" }}>
+            {(winner.net_benefit_days * origin.affected_vessels).toFixed(0)}d
+          </div>
+          <div className="dc-impact-label">total vessel-days saved</div>
+        </div>
+        <div className="dc-impact-card glass-card">
+          <div className="section-kicker"><Anchor size={12} /> Capacity</div>
+          <div className="dc-impact-num" style={{ color: "#a78bfa" }}>{winner.available_berths}</div>
+          <div className="dc-impact-label">berths at {winner.port_name}</div>
+        </div>
+      </div>
+
+      {/* ── BOB AI EXPLANATION ── */}
+      <div className="dc-bob glass-card">
+        <div className="dc-bob-header">
+          <div className="section-kicker"><Info size={13} /> IBM Bob · Regional Diversion Advisory</div>
+          <span className="dc-bob-badge">AI · Cached · No live API call</span>
+        </div>
+        <p className="dc-bob-text">"{bobText}"</p>
+        <div className="dc-bob-footer">
+          <span>Explanation generated from Python-computed metrics only — Bob does not calculate numbers.</span>
+        </div>
+      </div>
+
+      {/* ── COMPARE ALTERNATIVES TABLE ── */}
+      <div className="dc-compare glass-card">
+        <div className="dc-compare-header">
+          <div><div className="section-kicker"><Filter size={13} /> Compare alternatives</div><h3>All diversion candidates vs. origin</h3></div>
+          <span className="timeline-count">Ranked by net benefit</span>
+        </div>
+        <div className="dc-table-wrap">
+          <table className="dc-table">
+            <thead>
+              <tr>
+                <th>Port</th>
+                <th>Congestion</th>
+                <th>Extra transit</th>
+                <th>Delay avoided</th>
+                <th>Net benefit</th>
+                <th>Berths</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {origin.alternatives.map(alt => (
+                <tr key={alt.port_id} className={alt.decision === "BEST" ? "dc-row-best" : ""}>
+                  <td>
+                    <div className="dc-port-cell">
+                      <strong>{alt.port_name}</strong>
+                      <small>{alt.country}</small>
+                    </div>
+                  </td>
+                  <td><span className={`dc-pct ${alt.congestion_pct >= 70 ? "danger-text" : alt.congestion_pct >= 50 ? "warn-text" : "winner-text"}`}>{alt.congestion_pct}%</span></td>
+                  <td>+{alt.extra_transit_days}d</td>
+                  <td className="winner-text">−{alt.delay_avoided_days}d</td>
+                  <td><strong className="winner-text">+{alt.net_benefit_days}d</strong></td>
+                  <td>{alt.available_berths}</td>
+                  <td><span className={`dc-decision-chip ${DECISION_META[alt.decision]?.cls}`}>{DECISION_META[alt.decision]?.label}</span></td>
+                </tr>
+              ))}
+              {/* Origin row — always last, red */}
+              <tr className="dc-row-origin">
+                <td>
+                  <div className="dc-port-cell">
+                    <strong>{origin.port_name}</strong>
+                    <small>Current origin · congested</small>
+                  </div>
+                </td>
+                <td><span className="danger-text dc-pct">{origin.congestion_pct}%</span></td>
+                <td>—</td>
+                <td className="danger-text">−{origin.expected_wait_hrs}h wait</td>
+                <td>—</td>
+                <td>—</td>
+                <td><span className="dc-decision-chip dc-congested">🔴 Congested</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── ISSUED TOAST ── */}
+      {issued && (
+        <div className="dc-toast">
+          <CheckCircle2 size={18} /> Diversion advisory issued — {winner.port_name} designated as primary alternate
+        </div>
+      )}
+
+      {/* ── MODAL ── */}
+      {showModal && (
+        <div className="dc-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="dc-modal glass-card" onClick={e => e.stopPropagation()}>
+            <div className="dc-modal-header">
+              <Navigation size={22} className="winner-text" />
+              <h3>Issue Fleet Diversion Advisory</h3>
+            </div>
+            <p className="dc-modal-sub">
+              This will designate <strong>{winner.port_name}</strong> as the primary
+              alternate for <strong>{origin.port_name}</strong> in the 72-hour operations plan.
+            </p>
+            <div className="dc-modal-summary">
+              <div><span>Origin</span><strong className="danger-text">{origin.port_name} — {origin.congestion_pct}% congestion</strong></div>
+              <div><span>Divert to</span><strong className="winner-text">{winner.port_name} — {winner.congestion_pct}% congestion</strong></div>
+              <div><span>Net benefit</span><strong className="winner-text">+{winner.net_benefit_days} days per vessel</strong></div>
+              <div><span>Vessels affected</span><strong>{origin.affected_vessels} vessels in forecast window</strong></div>
+            </div>
+            <div className="dc-modal-actions">
+              <button className="btn dc-issue-btn" onClick={handleIssue}>
+                <CheckCircle2 size={16} /> Confirm &amp; Issue Advisory
+              </button>
+              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
+
+
+const fetchScene = async (timestamp) => {
+  const res = await fetch(`${API_BASE}/visualization/scene?port_id=1&at=${encodeURIComponent(timestamp)}`);
+  if (!res.ok) throw new Error("Visualization API unavailable");
+  return res.json();
+};
 
 const SCENE_TIME = "2019-01-03T12:00:00Z";
 
@@ -441,7 +795,12 @@ const PortReplay = () => {
   const chosenVessel = scene?.vessels.find((vessel) => vessel.id === selected);
 
   if (!scene) {
-    return <div className="glass-card text-muted">Loading schedule replay. Start the FastAPI backend to view the scene.</div>;
+    return (
+      <div className="glass-card text-muted" style={{ padding: '2.5rem', display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        <RotateCcw size={20} className="spin" />
+        <span>Loading digital twin schedule replay from backend…</span>
+      </div>
+    );
   }
 
   return (
@@ -555,7 +914,7 @@ function App() {
             <Route path="/" element={<OperationsPlan />} />
             <Route path="/hotspots" element={<Heatmap />} />
             <Route path="/berths" element={<BerthAssignments />} />
-            <Route path="/routing" element={<Placeholder title="Alternate Routes" />} />
+            <Route path="/routing" element={<AlternateRoutes />} />
             <Route path="/visualization" element={<PortReplay />} />
           </Routes>
         </main>
