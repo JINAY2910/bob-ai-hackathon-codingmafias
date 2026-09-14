@@ -1,50 +1,53 @@
 # Architecture
 
-## Component Diagram
+## System Architecture
+
+The following diagram illustrates how data flows from the frontend dashboard through the FastAPI backend to the various offline processing models and the IBM Bob explainability layer.
+
 ```mermaid
 graph TD
-    %% Users
-    A[Shift Supervisor] -->|Views Dashboard| B[React Web UI]
-
-    %% Frontend to Backend
-    B -->|API Calls| C[FastAPI Backend]
-
-    %% Backend to LLM
-    C -->|Plan JSON Prompt| D[IBM Bob CLI]
-    D -->|Plain-English Summary| C
-
-    %% Backend to Data Layer
-    C -->|Fetch Routes| E[Alternate Routing CSV]
-    C -->|Fetch Hotspots| F[Prediction CSV]
-    C -->|Fetch Schedule| G[Optimizer Assignments CSV]
-
-    %% Offline Processing Layer
-    H[Raw Maritime CSVs] -->|Data Pipeline| I[Feature Engineering]
-    I --> J[XGBoost AI]
-    I --> K[Heuristic Optimizer]
-    I --> L[Graph Routing Engine]
+    A[Shift Supervisor / Browser] -->|HTTP/REST| B[Frontend - React/Vite]
+    B -->|REST API| C[Backend - FastAPI]
     
-    J -->|Generates| F
-    K -->|Generates| G
-    L -->|Generates| E
+    %% Backend internal routing
+    C -->|Fetch Hotspots| D[XGBoost Prediction Data]
+    C -->|Fetch Routes| E[Graph Routing Engine Data]
+    C -->|Fetch Schedule| F[Heuristic Optimizer Data]
+    
+    %% LLM Integration
+    C -->|JSON Plan Summary| G[IBM Bob CLI / Watsonx]
+    G -->|Plain-English Text| C
+    
+    %% Final output
+    C -->|JSON Payload| B
 ```
 
-## Component Table
+## Components
 
 | Component | Technology | Responsibility |
-| :--- | :--- | :--- |
-| **Frontend UI** | React, Vite | Visualizes the dashboard, displays the 72-hour shift plan, and shows alternate routing recommendations. |
-| **Backend API** | Python, FastAPI | Serves processed data to the frontend and acts as the orchestrator for the LLM integration. |
-| **Prediction Engine** | Python, XGBoost | Trains on historical vessel ETAs and berth capacities to output daily congestion probability scores. |
-| **Optimizer** | Python (Pandas) | A deterministic algorithm that schedules vessels to berths/cranes while strictly enforcing physical constraints. |
-| **Routing Engine** | Python (Graph Math) | Calculates viability scores between connected ports to suggest the top 3 optimal detours. |
-| **Explainability** | IBM Bob LLM CLI | Takes the numerical metrics from the backend and translates them into a 3-sentence summary for the supervisor. |
+|---|---|---|
+| Frontend | React 19, Vite, Tailwind | Interactive dashboard UI for 72-hour planning and visualization. |
+| Backend API | FastAPI (Python) | Serving data, routing API requests, orchestration. |
+| AI / Prediction | XGBoost, Scikit-Learn | Training on historical vessel data to predict port congestion. |
+| Optimization | Python (Pandas/Heuristics) | Deterministic scheduling of vessels to berths and cranes. |
+| Explainability | IBM Bob CLI (watsonx.ai) | Translating raw numerical probabilities into human-readable text. |
+| Database | CSV Flat Files | Storing massive pre-computed model outputs for 1.48M vessels. |
 
-## Data Flow (End-to-End)
-1.  **Offline Batch Processing:** Raw historical CSVs (`portcalls.csv`, `vessels.csv`, `berths.csv`, `segments_port2port.csv`) are ingested by our Python data pipeline. The XGBoost model predicts hotspots, the Optimizer schedules the ships, and the Routing Engine finds detours. The results are saved as static CSV databases in `data/processed/`.
-2.  **API Serving:** The FastAPI backend spins up and instantly reads these pre-computed CSV databases.
-3.  **LLM Augmentation:** When the API prepares the 72-hour operational plan payload for the frontend, it first passes a JSON summary of the plan to the IBM Bob CLI. Bob generates a human-readable text summary and appends it to the payload.
-4.  **Client Visualization:** The React frontend receives the payload and renders the interactive graphs, tables, and the IBM Bob text summary.
+## Data Flow
+
+1. Offline data pipelines process raw maritime data (ETAs, berth counts) into structured features.
+2. The XGBoost model predicts hotspots and the Optimizer schedules all vessels, saving results to static CSVs.
+3. The React dashboard requests the 72-hour operational plan for a specific port via the FastAPI backend.
+4. The backend loads the pre-computed CSV data and sends a JSON summary of the congestion metrics to the IBM Bob CLI.
+5. IBM Bob returns a 3-sentence plain English summary, which the backend appends to the payload.
+6. The frontend renders the complete dashboard, updating the maps, tables, and AI explanations.
+
+## Security Considerations
+
+- API keys (like `BOB_API_KEY`) are stored in `.env` files and never committed to git (ignored via `.gitignore`).
+- Cross-Origin Resource Sharing (CORS) is configured on the FastAPI backend to securely restrict domains in production.
+- Subprocess calls to the IBM Bob CLI use timeout protections to prevent deadlocks from malicious or malformed prompts.
 
 ## Scalability Notes
-By strictly separating the heavy mathematical calculations (Offline Batch Processing) from the API Serving layer, our web dashboard is incredibly fast. The UI simply reads pre-computed CSVs and only makes a live inference call to IBM Bob, ensuring sub-second load times for the shift supervisor.
+
+The architecture strictly separates heavy mathematical offline processing from real-time API serving. The FastAPI backend is entirely stateless and simply reads pre-computed static files, meaning it can be horizontally scaled infinitely behind a load balancer without performance degradation. The only bottleneck is the external API call to IBM Bob, which we mitigate using a robust local caching mechanism and deterministic fallback generators.

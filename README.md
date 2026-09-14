@@ -1,109 +1,110 @@
-# PortFlow
-
-<<<<<<< Updated upstream
-**Track:** Logistics & Ports
-
-**Team:** Coding Mafias
-*   **Bhumi Shah** (Lead) - `24it089@charusat.edu.in`
-*   **Yug Yadav** - `24it112@charusat.edu.in`
-*   **Jinay Shah** - `24it091@charusat.edu.in`
-*   **Bhavika Patel** - `24it062@charusat.edu.in`
+# 🚀 PortFlow
 
 ---
-=======
-> **Demo mode:** PortFlow currently runs as a historical schedule simulator using 2019 public data. It is not connected to live AIS or port sensors. All forecasts and assignments should be treated as decision-support outputs, not production dispatch instructions.
 
-## Team
-- **Team Name**: Coding Mafias
-- **Track**: Logistics & Ports
-- **Lead**: Yug Yadav
-- **Members**: Jinay Shah, Bhumi Shah, Bhavika Patel
->>>>>>> Stashed changes
+## 👥 Team
 
-## Problem Statement
+| Field | Value |
+|---|---|
+| **Team Name** | Coding Mafias |
+| **Track** | Logistics & Ports |
+| **Team Lead** | Bhumi Shah — 24it089@charusat.edu.in |
+| **Members** | Yug Yadav, Jinay Shah, Bhavika Patel |
 
-Port scheduling is overwhelmingly manual and reactive. Operators allocate berths and cranes using spreadsheets. By the time congestion is noticed, massive queues of ships have already formed offshore. Our data analysis of 2019 historical data showed bottlenecks so severe that average waiting times spiked to 41 days. In 2021, the LA/Long Beach backlog cost global supply chains over $10B in stranded capital and wasted fuel.
+---
 
-## Solution
+## 🎯 Problem Statement
 
-PortFlow is an End-to-End Predictive Command Center. It uses an XGBoost AI model to predict congestion hotspots 1-3 days in advance, a deterministic heuristic algorithm to perfectly optimize berth and crane assignments, and a Graph Search engine to recommend alternate routing detours. Finally, it generates a rolling 72-hour operational plan for shift supervisors, translated into plain English by IBM Bob.
+Port scheduling is overwhelmingly manual and reactive, relying on spreadsheets to allocate berths and cranes. Because operators have zero visibility into future congestion, massive bottlenecks form offshore—causing extreme delays (up to 41 days of waiting time) and costing global supply chains billions of dollars in wasted fuel and stranded capital.
 
-## Key Features
+---
 
-*   **Congestion Hotspot Prediction:** Predicts port gridlock before it happens using ETAs and capacity data.
-*   **Berth & Crane Optimizer:** Heuristic scheduler that strictly adheres to physical vessel constraints to minimize waiting time.
-*   **Alternate Routing Engine:** Calculates viability scores across the global maritime network to recommend the Top 3 detour ports.
-*   **72-Hour Shift Plan:** Auto-generates a localized, time-windowed itinerary for incoming vessels.
-*   **IBM Bob Explainability:** Translates raw AI probabilities and utilization metrics into a human-readable 3-sentence summary.
+## 💡 Solution
 
-## Tech Stack
+PortFlow is an End-to-End Predictive Command Center that shifts operations from reactive to proactive. It uses AI to predict congestion hotspots days in advance, a heuristic algorithm to automatically assign incoming ships to physical berths and cranes, and an Alternate Routing Engine to detour delayed ships before they even arrive.
 
-*   **AI/Data:** Python, Pandas, Scikit-Learn, XGBoost
-*   **Backend:** FastAPI, Uvicorn
-*   **Frontend:** React, Vite, TailwindCSS (via UI components)
-*   **IBM Tech:** IBM Bob CLI (Watsonx powered)
+---
 
-## How to Run
+## ✨ Key Features
 
-<<<<<<< Updated upstream
-Please see [`docs/setup-guide.md`](docs/setup-guide.md) for complete, step-by-step instructions on running the backend and frontend simultaneously.
+- **Feature 1:** Congestion Hotspot Prediction using an XGBoost AI model to forecast port gridlock before it happens.
+- **Feature 2:** Berth & Crane Optimizer that acts as a heuristic scheduler strictly adhering to physical vessel constraints.
+- **Feature 3:** Alternate Routing Engine that calculates global network viability scores to recommend the Top 3 detour ports.
+- **Feature 4:** 72-Hour Shift Plan that auto-generates a localized, time-windowed itinerary for shift supervisors.
+- **Feature 5:** IBM Bob Explainability Layer that translates raw AI probabilities into plain-English summaries.
 
-## Demo
+---
 
-*   **Demo Video:** [View our 3-minute Demo Video](demo/demo-video-link.txt)
-*   **Live App:** [NOT DEPLOYED](demo/live-demo-url.txt)
-*   **Screenshots:** See the `demo/screenshots/` folder.
-=======
-**1. Install backend dependencies**
-```bash
-python -m pip install -r requirements.txt
+## 🛠️ Tech Stack
+
+| Category | Technologies |
+|---|---|
+| **Languages** | Python, JavaScript (JSX) |
+| **Frameworks** | FastAPI, React, Vite, TailwindCSS |
+| **IBM Technologies** | IBM Bob CLI (Watsonx powered) |
+| **Databases** | Pandas/CSV (Static pre-computed datasets) |
+| **Other** | Scikit-Learn, XGBoost |
+
+---
+
+## 📁 Repository Structure
+
+```
+├── src/                  # All source code (FastAPI backend + React frontend)
+├── docs/                 # Written documentation
+│   ├── problem-statement.md
+│   ├── solution-overview.md
+│   ├── architecture.md
+│   └── setup-guide.md
+├── demo/                 # Demo artifacts
+│   ├── screenshots/      # App screenshots
+│   └── demo-video-link.txt  # Link to demo video
+├── presentation/         # Slide deck
+└── submission.yaml       # Structured submission metadata
 ```
 
-**2. Start the FastAPI Backend**
-Run the backend server from the root of the project:
-```bash
-python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
-```
+---
 
-**3. Start the React Dashboard**
-In a new terminal window, start the frontend development server:
+## ⚡ How to Run
+
 ```bash
+# 1. Clone the repo and navigate into it
+git clone https://github.com/[your-repo].git
+cd bob-ai-hackathon-codingmafias
+
+# 2. Start the Backend API (Terminal 1)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install fastapi uvicorn pandas xgboost scikit-learn numpy
+uvicorn src.api.main:app --reload
+
+# 3. Start the Frontend Dashboard (Terminal 2)
 cd src/dashboard-ui
+npm install
 npm run dev
 ```
+*Note: Ensure you have your `BOB_API_KEY` set in `src/.env` to enable the IBM Bob explainability feature!*
 
-The dashboard includes a **3D Port Replay** view. It reads the schedule-backed scene from:
-```text
-GET /api/v1/visualization/scene?port_id=1&at=2019-01-03T12:00:00Z
-```
-The replay shows simulated vessel movement, berth risk, crane status, routes, direction, and service/departure times. Positions are derived from the historical schedule and are not live AIS positions.
+---
 
-The backend health check is available at `http://localhost:8000/health` and reports
-`historical-simulation` mode so the UI never has to imply that the data is live.
+## 🖥️ Demo
 
-**4. Run the ML Pipelines (Standalone)**
-You can also run the underlying data engineering and machine learning scripts directly:
-```bash
-python src/data_processing.py
-python src/feature_engineering.py
-python src/train_model.py
-python src/optimizer/run_optimizer.py
-python src/routing/alternate_routing.py
-```
+| Artifact | Link |
+|---|---|
+| 📹 Demo Video | [See demo/demo-video-link.txt](demo/demo-video-link.txt) |
+| 🌐 Live Demo | [See demo/live-demo-url.txt](demo/live-demo-url.txt) |
+| 🖼️ Screenshots | [See demo/screenshots/](demo/screenshots/) |
+| 📊 Presentation | [See presentation/](presentation/) |
 
-## Demo
-- **Video**: [Demo Video Link](./demo/demo-video-link.txt)
-- **Live Demo**: NOT DEPLOYED
-- **Screenshots**: [View Screenshots](./demo/screenshots)
-- **Judge Runbook**: [Three-minute demo script](./docs/demo-runbook.md)
-- **Implementation Changes**: [Complete change summary](./docs/implementation-changes.md)
->>>>>>> Stashed changes
+---
 
-## Known Limitations
+## ⚠️ Known Limitations
 
-*   **Historical Data Constraint:** Because we are using 2019 hackathon data, the "72-hour rolling window" operates on a simulated date (e.g., Nov 1st, 2019) rather than today's actual date.
-*   **Geographic Distance:** We used "historical shipping lane traffic volume" as a proxy for geographic distance in our Alternate Routing engine to keep the MVP lightweight, rather than parsing raw PostGIS Hex coordinates.
+- **Historical Data Constraint:** Because we are using 2019 hackathon data, the "72-hour rolling window" operates on a simulated date (e.g., Nov 1st, 2019) rather than today's actual date.
+- **Geographic Distance Proxy:** We used "historical shipping lane traffic volume" as a proxy for geographic distance in our Alternate Routing engine to keep the MVP lightweight, rather than parsing raw PostGIS Hex coordinates.
 
-## What We're Most Proud Of
+---
+
+## 🏅 What We're Most Proud Of
 
 We are most proud of our **Optimizer's mathematical proof**. When we ran our heuristic scheduler against the full 1.48 million historical vessel records, it definitively proved that 858,000 vessels were fundamentally unassignable due to physical capacity constraints. This mathematically validated our entire project thesis: *Optimization alone is not enough; you must predict and reroute traffic before it arrives.*

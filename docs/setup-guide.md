@@ -1,126 +1,83 @@
 # Setup Guide
 
-This guide provides exact instructions to run the PortFlow application locally.
+> **This file is read by the automated evaluation pipeline. Be precise and complete.**
 
 ## Prerequisites
-<<<<<<< Updated upstream
-*   Python 3.10+
-*   Node.js 18+ and npm
-*   IBM Bob CLI (`bob` command available in your PATH)
-*   An active IBM Bob API Key
-=======
-- Python 3.10+
-- Node.js 18+ (for the React dashboard)
->>>>>>> Stashed changes
 
-## Environment Setup
+Before you begin, ensure you have the following installed:
 
-<<<<<<< Updated upstream
-Our application uses a `.env` file for the backend and LLM integration. 
+- [x] Python 3.10+
+- [x] Node.js 18+ and npm
+- [x] IBM Bob CLI installed and accessible in your system PATH
+- [x] An active IBM Bob / watsonx.ai API Key
 
-1. Create a `.env` file in the `src/` directory.
-2. Add the following variables (copy from `src/.env.example` if available):
+## Environment Variables
 
-```env
-BOB_API_KEY=your_actual_api_key_here
-USE_BOB=True
-PORT=8000
-DATA_DIR=./data
-```
-
-## Running the Project
-
-To run PortFlow, you must start both the FastAPI Backend and the React Frontend simultaneously. Open two separate terminal windows at the root of the project.
-
-### 1. Start the Backend API (Terminal 1)
+Copy `src/.env.example` to `src/.env` (or create a new `.env` file in the `src/` folder) and fill in the values:
 
 ```bash
-# Create and activate a virtual environment
+touch src/.env
+```
+
+| Variable | Description | Required |
+|---|---|---|
+| `BOB_API_KEY` | Your IBM Bob API key | Yes |
+| `USE_BOB` | Set to `True` to enable LLM generation | Yes |
+| `PORT` | The port for the backend server (default 8000) | No |
+| `DATA_DIR` | Path to the data directory (default `./data`) | No |
+
+## Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/[your-org]/bob-ai-hackathon-codingmafias.git
+cd bob-ai-hackathon-codingmafias
+
+# 2. Install backend dependencies
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install the required Python packages
 pip install fastapi uvicorn pandas xgboost scikit-learn numpy
 
-# Start the FastAPI server
-uvicorn src.api.main:app --reload
+# 3. Install frontend dependencies
+cd src/dashboard-ui
+npm install
+cd ../..
 ```
-*The backend will now be running on `http://localhost:8000`.*
 
-### 2. Start the Frontend Dashboard (Terminal 2)
+## Running the Application
+
+You must run the backend and frontend simultaneously in separate terminals.
 
 ```bash
-# Navigate to the dashboard directory
+# Terminal 1: Start the backend (Ensure .venv is activated!)
+source .venv/bin/activate
+uvicorn src.api.main:app --reload
+
+# Terminal 2: Start the frontend
 cd src/dashboard-ui
-
-# Install Node dependencies
-npm install
-
-# Start the Vite development server
 npm run dev
 ```
-*The frontend will now be running on `http://localhost:5173` (or the port Vite provides).*
 
-## How to Verify it's Working
+The application will be available at: `http://localhost:5173` (Frontend) and `http://localhost:8000` (Backend API).
 
-1. Open your browser to the Frontend URL (e.g., `http://localhost:5173`).
-2. You should see the PortFlow Dashboard UI load successfully.
-3. Click on a specific Port (e.g., "Port 1") to view its 72-Hour Operations Plan.
-4. **Verifying IBM Bob:** At the top of the operations plan, you should see a short, plain-English summary (e.g., *"HIGH congestion risk at Port 1..."*). If you see this summary, the FastAPI backend has successfully contacted the IBM Bob CLI using your `.env` credentials!
-=======
-## Data Setup
-1. The repository includes the processed demo dataset used by the historical simulator.
-2. To rebuild it from raw files, run:
-   ```bash
-   python src/data_processing.py
-   python src/feature_engineering.py
-   python src/train_model.py
-   python src/optimizer/run_optimizer.py
-   python src/routing/alternate_routing.py
-   ```
+## Running Tests
 
-## Installation & Running
-1. Install Python dependencies:
-   ```bash
-   python -m pip install -r requirements.txt
-   ```
-2. Install Node.js dependencies for the dashboard:
-   ```bash
-   cd src/dashboard-ui/
-   npm install
-   ```
-3. Start the backend server:
-   ```bash
-   python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
-   ```
-4. Start the frontend dashboard:
-   ```bash
-   cd src/dashboard-ui/
-   npm run dev
-   ```
+*Testing scripts are integrated directly into our offline processing pipelines (`data_processing.py`, `train_model.py`). Run those to verify data integrity.*
 
-## Verification
-To verify the system is working, open the Vite URL shown in the terminal. The API health check is `http://localhost:8000/health`.
+## Quick Demo (Optional)
 
-To verify the supervisor decision loop:
+To verify the IBM Bob integration is working locally before launching the UI, you can run the LLM planner directly:
 
-```powershell
-Invoke-RestMethod "http://localhost:8000/api/v1/alternate-routes?vessel_id=demo-vessel&port_id=1"
-Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8000/api/v1/alternate-routes/advisory" `
-  -ContentType "application/json" `
-  -Body '{"origin_port_id":1,"alternate_port_id":98,"vessel_id":"demo-vessel","reason":"Supervisor approved the backend recommendation."}'
-Invoke-RestMethod "http://localhost:8000/api/v1/alternate-routes/advisories"
+```bash
+source .venv/bin/activate
+python src/orchestration/llm_planner.py
 ```
-
-Advisories are intentionally held in process memory because this submission is a historical simulation. Restarting the API clears them.
->>>>>>> Stashed changes
 
 ## Troubleshooting
 
-| Error | Cause | Solution |
-| :--- | :--- | :--- |
-| `zsh: command not found: uvicorn` | Virtual environment not activated. | Run `source .venv/bin/activate` in that specific terminal tab before running uvicorn. |
-| Dashboard shows "Failed to fetch" | Backend is not running or CORS issue. | Ensure Terminal 1 is running without errors and is on port `8000`. |
-| Bob Summary says "Fallback" | Invalid IBM Bob API key or network timeout. | Check that `BOB_API_KEY` in `src/.env` is correct and `USE_BOB=True`. |
-| Missing CSV files on startup | The batch scripts haven't been run. | Ensure the `data/processed` folder contains the output CSVs (or run the python scripts in `src/` manually). |
+| Issue | Solution |
+|---|---|
+| `zsh: command not found: uvicorn` | Virtual environment not activated. Run `source .venv/bin/activate` in that specific terminal tab before running uvicorn. |
+| Dashboard shows "Failed to fetch" | Backend is not running or CORS issue. Ensure Terminal 1 is running without errors and is on port `8000`. |
+| Bob Summary says "Fallback" | Invalid IBM Bob API key or network timeout. Check that `BOB_API_KEY` in `src/.env` is correct and `USE_BOB=True`. |
+| Missing CSV files on startup | The batch scripts haven't been run. Ensure the `data/processed` folder contains the output CSVs. |

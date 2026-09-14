@@ -1,20 +1,23 @@
 # Problem Statement
 
-## The Pain Point
-Global maritime logistics is suffering from a massive data synchronization issue. Port operators currently allocate berths, cranes, and yard space across hundreds of incoming vessels manually, using disjointed spreadsheets and isolated datasets. 
+## Background
 
-Because operators have zero visibility into future congestion, bottlenecks are only identified reactively—after the vessels have already arrived and begun queuing offshore. 
+Global maritime logistics operate on incredibly tight margins. Ships arrive at ports continuously and require immediate assignment to physical berths and quay cranes to unload their cargo. This domain represents the backbone of the global supply chain, handling billions of dollars of goods daily.
 
-## The Audience Affected
-This directly impacts:
-*   **Port Operators & Shift Supervisors:** Forced to manage chaos and constantly reshuffle operations.
-*   **Shipping Companies:** Experiencing extreme delays and burning thousands of gallons of wasted fuel waiting at sea.
-*   **Global Supply Chains:** The downstream delay of goods.
+## The Problem
 
-## Quantified Pain
-When we analyzed historical portcall data from 2019, our optimization algorithm proved that the lack of predictive routing caused **858,000 vessels** to be fundamentally unassignable to berths, resulting in an average waiting time of **41 days** in severe backlog scenarios.
+Port scheduling is overwhelmingly manual and reactive. Operations teams currently allocate berths and cranes across hundreds of incoming vessels using disjointed spreadsheets. Because they lack predictive visibility, congestion hotspots are only identified *after* the vessels have arrived and begun queueing in the ocean.
 
-In 2021, the LA/Long Beach backlog saw 100+ ships waiting offshore for weeks, costing global supply chains an estimated **$10B+**.
+## Who is Affected
 
-## Why this matters now
-With supply chain volatility at an all-time high, optimization alone cannot solve physical capacity deficits. Ports must adopt Predictive AI to forecast bottlenecks *before* they form, allowing them to proactively redirect traffic and activate 72-hour operational plans.
+- **Port Operators & Shift Supervisors:** They manage daily chaos and are forced to constantly reshuffle operational plans under high stress.
+- **Shipping Companies:** They burn thousands of gallons of wasted fuel idling at sea while waiting for dock space.
+- **Global Consumers & Supply Chains:** They suffer downstream delays in receiving critical goods and inventory.
+
+## Why It Matters
+
+The cost of reactive scheduling is astronomical. When we analyzed historical portcall data from 2019, we found that without optimization, average waiting times for ships spiked to 41 days in severe backlog scenarios. In 2021, the LA/Long Beach port backlog saw over 100 ships waiting offshore for weeks, costing global supply chains an estimated $10B+ in stranded capital and wasted fuel.
+
+## Why Existing Solutions Fall Short
+
+Existing solutions typically focus on *visualization* (e.g., dashboards showing where ships currently are). This falls short because simply knowing a port is congested today doesn't help—the ships are already trapped. To truly solve the problem, ports need *predictive* AI to forecast bottlenecks 72 hours before they form, combined with deterministic optimization to proactively reroute traffic.
