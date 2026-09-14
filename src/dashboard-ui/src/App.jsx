@@ -460,17 +460,6 @@ const AlternateRoutes = () => {
   return (
     <div className="diversion-page animate-fade-in">
 
-      {/* ── STORY BAR ── */}
-      <div className="story-bar">
-        <div className="story-step active"><span className="story-icon">🚨</span><span>Problem</span></div>
-        <div className="story-arrow">→</div>
-        <div className="story-step active"><span className="story-icon">🔎</span><span>Analyse</span></div>
-        <div className="story-arrow">→</div>
-        <div className="story-step active story-step-winner"><span className="story-icon">⭐</span><span>Recommend</span></div>
-        <div className="story-arrow">→</div>
-        <div className="story-step active"><span className="story-icon">💰</span><span>Impact</span></div>
-      </div>
-
       {/* ── HEADER ── */}
       <header className="operations-header dc-header">
         <div className="page-heading">
