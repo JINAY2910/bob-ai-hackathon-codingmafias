@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Ship, Anchor, CalendarClock, AlertTriangle, Info, CheckCircle2, Navigation, Play, Pause, RotateCcw } from 'lucide-react';
+import { LayoutDashboard, Ship, Anchor, CalendarClock, AlertTriangle, Info, CheckCircle2, Navigation, Play, Pause, RotateCcw, Gauge } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -81,134 +81,287 @@ const Sidebar = () => {
 
 const OperationsPlan = () => {
   const [data, setData] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchOperationsPlan().then(setData);
-  }, []);
+  const loadPlan = async () => {
+    setIsRefreshing(true);
+    const nextData = await fetchOperationsPlan();
+    setData(nextData);
+    setIsRefreshing(false);
+  };
 
-  if (!data) return <div className="p-8 text-center text-muted">Loading plan...</div>;
+  useEffect(() => { loadPlan(); }, []);
+
+  if (!data) return <div className="plan-loading">Loading 72-hour plan...</div>;
 
   return (
-    <div className="animate-fade-in flex flex-col gap-6">
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h2 className="text-2xl font-bold mb-1">72-Hour Operations Plan</h2>
-          <p className="text-muted">Generated automatically using IBM Bob & XGBoost</p>
+    <div className="operations-page animate-fade-in">
+      <header className="operations-header">
+        <div className="page-heading">
+          <p className="eyebrow">Port command center / rolling forecast</p>
+          <h2>72-Hour Operations Plan</h2>
+          <p className="page-subtitle">A clear view of what is arriving, what is at risk, and what needs attention next.</p>
         </div>
-        <div className="flex gap-4">
-          <button className="btn btn-secondary"><CalendarClock size={16}/> Historical</button>
-          <button className="btn btn-primary">Refresh Plan</button>
-        </div>
-      </div>
-
-      <div className="dashboard-grid">
-        {/* Executive Summary */}
-        <div className="glass-card col-span-8 stagger-1">
-          <div className="flex items-center gap-2 mb-4">
-            <Info className="text-blue-400" />
-            <h3 className="text-lg">Executive Summary</h3>
+        <div className="header-actions">
+          <div className="plan-window">
+            <CalendarClock size={16} />
+            <span>Rolling 72 hours</span>
           </div>
-          <p className="text-lg leading-relaxed text-gray-200">
-            {data.executive_summary}
-          </p>
+          <button className="btn btn-primary" onClick={loadPlan} disabled={isRefreshing}>
+            <RotateCcw size={16} className={isRefreshing ? "spin" : ""} />
+            {isRefreshing ? "Refreshing" : "Refresh plan"}
+          </button>
         </div>
+      </header>
 
-        {/* Risk Status */}
-        <div className="glass-card col-span-4 stagger-2 flex flex-col items-center justify-center text-center">
-          <div className={`status-indicator w-16 h-16 mb-4 ${data.overall_risk === 'HIGH' ? 'pulsing-danger' : 'bg-green-500'}`}></div>
-          <h3 className="text-xl mb-1">Overall Risk: {data.overall_risk}</h3>
-          <p className="text-muted text-sm">{data.congestion_hotspots.length} active hotspots detected</p>
-        </div>
-
-        {/* Timeline View */}
-        <div className="glass-card col-span-12 stagger-3 mt-4">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <CalendarClock className="text-blue-400" /> Chronological Timeline
-            </h3>
+      <section className="plan-overview-grid">
+        <div className="plan-summary glass-card stagger-1">
+          <div className="section-kicker"><Info size={16} /> Executive summary</div>
+          <div className="summary-copy">{data.executive_summary}</div>
+          <div className="summary-footnote">
+            <span className="live-dot" /> Forecast generated from current model outputs
           </div>
-          
-          <div className="flex flex-col gap-6 relative">
-            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-[rgba(255,255,255,0.1)]"></div>
+        </div>
+
+        <div className={`risk-card glass-card stagger-2 risk-${String(data.overall_risk || 'LOW').toLowerCase()}`}>
+          <div className="risk-card-top"><span className="section-kicker">Network risk</span><AlertTriangle size={18} /></div>
+          <div className="risk-value">{data.overall_risk || "LOW"}</div>
+          <p>{data.congestion_hotspots?.length || 0} congestion signal{data.congestion_hotspots?.length === 1 ? "" : "s"} in this horizon</p>
+          <div className="risk-meter"><span style={{ width: data.overall_risk === "HIGH" ? "88%" : data.overall_risk === "MEDIUM" ? "58%" : "28%" }} /></div>
+        </div>
+      </section>
+
+      <section className="timeline-card glass-card stagger-3">
+        <div className="timeline-heading">
+          <div>
+            <div className="section-kicker"><CalendarClock size={16} /> Shift timeline</div>
+            <h3>Operational watchlist</h3>
+          </div>
+          <span className="timeline-count">{data.shifts?.length || 0} shifts / 24h blocks</span>
+        </div>
+
+        <div className="shift-list">
+          {(data.shifts || []).map((shift, idx) => {
+            const start = new Date(shift.time_block.start);
+            const end = new Date(shift.time_block.end);
+            const risk = String(shift.risk?.level || "LOW").toLowerCase();
+            const actions = shift.supervisor_actions || [];
+            const warnings = (shift.risk?.hotspots || []).map((hotspot, index) => ({
+              id: `hotspot-${index}`,
+              type: "warning",
+              label: "Congestion warning",
+              value: `Berth ${hotspot}`,
+            }));
+            const operations = (shift.planned_operations || []).map((operation, index) => ({
+              id: `operation-${index}`,
+              type: "operation",
+              label: `${operation.vessel_id} ${operation.action.toLowerCase()}`,
+              value: `Berth ${operation.berth_id}`,
+            }));
+            const rightItems = [...warnings, ...operations];
+            const rowCount = Math.max(actions.length, rightItems.length, 1);
             
-            {data.shifts.map((shift, idx) => {
-              const start = new Date(shift.time_block.start);
-              const end = new Date(shift.time_block.end);
-              
-              return (
-                <div key={idx} className="relative pl-14">
-                  <div className={`absolute left-[21px] top-6 w-3 h-3 rounded-full border-2 border-[#0B1120] ${shift.risk.level === 'HIGH' ? 'bg-red-500' : shift.risk.level === 'MEDIUM' ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-                  
-                  <div className="glass-panel p-5">
-                    <div className="flex justify-between items-center mb-4 border-b border-[rgba(255,255,255,0.1)] pb-3">
-                      <h4 className="text-lg font-bold text-white">
-                        {start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        <span className="text-muted ml-2 font-normal text-base">
-                          {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </h4>
-                      <span className={`badge ${shift.risk.level === 'HIGH' ? 'badge-danger' : shift.risk.level === 'MEDIUM' ? 'badge-warning' : 'bg-[rgba(34,197,94,0.2)] text-green-400'}`}>
-                        {shift.risk.level} RISK
-                      </span>
-                    </div>
+            return (
+              <article key={idx} className={`shift-card risk-border-${risk}`}>
+                <div className="shift-marker" />
+                <div className="shift-topline">
+                  <div>
+                    <div className="shift-date">{start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                    <div className="shift-hours">{start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} <span>to</span> {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                  <span className={`risk-pill ${risk}`}>{shift.risk?.level || "LOW"} risk</span>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <h5 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
-                          <CheckCircle2 size={16}/> Supervisor Actions
-                        </h5>
-                        {shift.supervisor_actions.length > 0 ? (
-                          <div className="flex flex-col gap-2">
-                            {shift.supervisor_actions.map(action => (
-                              <div key={action.action_id} className="bg-[rgba(0,0,0,0.2)] rounded p-3 text-sm flex justify-between items-center">
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${action.priority === 'P0' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'}`}>{action.priority}</span>
-                                    <span className="text-white font-medium">{action.description}</span>
-                                  </div>
-                                  <div className="text-muted text-xs ml-8">Due: {new Date(action.due_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                                </div>
-                                <button className="btn btn-primary !py-1 !px-3 text-xs">Approve</button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted italic bg-[rgba(0,0,0,0.1)] p-3 rounded border border-[rgba(255,255,255,0.02)]">No critical actions required.</div>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <h5 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2">
-                          <AlertTriangle size={16}/> Operations & Warnings
-                        </h5>
-                        
-                        <div className="flex flex-col gap-2">
-                          {shift.risk.hotspots.map((hs, i) => (
-                            <div key={`hs-${i}`} className="text-sm bg-red-500/10 text-red-300 border border-red-500/20 rounded p-2 flex justify-between items-center">
-                              <span><span className="font-bold">Congestion Warning:</span> Berth {hs}</span>
-                            </div>
-                          ))}
-                          
-                          {shift.planned_operations.map((op, i) => (
-                            <div key={`op-${i}`} className="text-sm bg-[rgba(0,0,0,0.2)] rounded p-2 flex justify-between items-center">
-                              <span><span className="text-blue-300 font-medium">{op.vessel_id}</span> {op.action.toLowerCase()}</span>
-                              <span className="text-muted">Berth {op.berth_id}</span>
-                            </div>
-                          ))}
-
-                          {shift.risk.hotspots.length === 0 && shift.planned_operations.length === 0 && (
-                            <div className="text-sm text-muted italic bg-[rgba(0,0,0,0.1)] p-3 rounded border border-[rgba(255,255,255,0.02)]">No major operations scheduled.</div>
-                          )}
+                <div className="shift-body">
+                  <div className="shift-column shift-column-header">
+                    <h5><CheckCircle2 size={15} /> Supervisor actions</h5>
+                  </div>
+                  <div className="shift-column shift-column-header">
+                    <h5><AlertTriangle size={15} /> Operations & warnings</h5>
+                  </div>
+                  <div className="shift-paired-rows">
+                    {Array.from({ length: rowCount }, (_, rowIndex) => {
+                      const action = actions[rowIndex];
+                      const rightItem = rightItems[rowIndex];
+                      return <div className="paired-row" key={`${idx}-${rowIndex}`}>
+                        <div className="paired-cell">
+                          {action ? <div className="action-row">
+                            <div className="action-copy"><span className={`priority-tag ${action.priority === 'P0' ? 'p0' : 'p1'}`}>{action.priority}</span><span>{action.description}</span><small>Due {new Date(action.due_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small></div>
+                            <button className="mini-button">Review</button>
+                          </div> : <div className="empty-row">No supervisor action required.</div>}
                         </div>
-                      </div>
-                    </div>
+                        <div className="paired-cell">
+                          {rightItem ? (rightItem.type === "warning" ? <div className="warning-row"><span>{rightItem.label}</span><strong>{rightItem.value}</strong></div> : <div className="operation-row"><span><strong>{rightItem.label}</strong></span><small>{rightItem.value}</small></div>) : <div className="empty-row">No major operations scheduled.</div>}
+                        </div>
+                      </div>;
+                    })}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </article>
+            );
+          })}
         </div>
-      </div>
+      </section>
+    </div>
+  );
+};
+
+const fetchHotspots = async () => {
+  const response = await fetch(`${API_BASE}/hotspots/all`);
+  if (!response.ok) throw new Error("Hotspot API unavailable");
+  return response.json();
+};
+
+const Heatmap = () => {
+  const [predictions, setPredictions] = useState(null);
+  const [selectedPortId, setSelectedPortId] = useState(null);
+  const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadHotspots = async () => {
+    setRefreshing(true);
+    setError("");
+    try {
+      const nextPredictions = await fetchHotspots();
+      setPredictions(Array.isArray(nextPredictions) ? nextPredictions.filter(Boolean) : []);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => { loadHotspots(); }, []);
+
+  if (!predictions && !error) return <div className="plan-loading">Loading congestion forecast...</div>;
+  if (error) return <div className="heatmap-error glass-card"><AlertTriangle size={20} /><div><strong>Forecast unavailable</strong><p>{error}. Start the API and refresh this view.</p></div><button className="btn btn-secondary" onClick={loadHotspots}>Retry</button></div>;
+  if (!predictions.length) return <div className="heatmap-empty glass-card"><CheckCircle2 size={22} /><p>No congestion predictions are available for this forecast window.</p><button className="btn btn-secondary" onClick={loadHotspots}>Refresh forecast</button></div>;
+
+  const prediction = [...predictions].sort((left, right) => right.congestion_probability - left.congestion_probability)[0];
+  const probability = Math.round((prediction.congestion_probability || 0) * 100);
+  const risk = String(prediction.risk_level || "LOW").toLowerCase();
+  const hotspots = predictions.filter(port => port.risk_level === "HIGH");
+  const forecastStart = new Date(prediction.forecast_start);
+  const forecastEnd = new Date(prediction.forecast_end);
+  const highRiskCount = predictions.filter(item => item.risk_level === "HIGH").length;
+  const mediumRiskCount = predictions.filter(item => item.risk_level === "MEDIUM").length;
+  const selectedPort = predictions.find(port => port.port_id === selectedPortId) || prediction;
+
+  return (
+    <div className="heatmap-page animate-fade-in">
+      <header className="operations-header">
+        <div className="page-heading">
+          <p className="eyebrow">Feature 1 / predictive capacity signal</p>
+          <h2>Congestion Heatmap</h2>
+          <p className="page-subtitle">See where vessel demand is likely to push the port beyond its available operating capacity.</p>
+        </div>
+        <button className="btn btn-primary" onClick={loadHotspots} disabled={refreshing}>
+          <RotateCcw size={16} className={refreshing ? "spin" : ""} /> {refreshing ? "Refreshing" : "Refresh forecast"}
+        </button>
+      </header>
+
+      <section className="heatmap-top-grid">
+        <div className="heatmap-risk-card glass-card">
+          <div className="section-kicker"><Gauge size={16} /> Network forecast</div>
+          <div className="heatmap-risk-main">
+            <div className={`probability-ring ${risk}`}><strong>{probability}%</strong><span>risk</span></div>
+            <div><h3>{hotspots.length} high-risk ports</h3><p>Highest predicted pressure: {prediction.port_name}</p><span className={`risk-pill ${risk}`}>{prediction.risk_level} risk · {probability}%</span></div>
+          </div>
+          <div className="forecast-window"><span>Forecast window</span><strong>{forecastStart.toLocaleDateString()} · {forecastStart.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} — {forecastEnd.toLocaleDateString()} · {forecastEnd.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</strong></div>
+        </div>
+        <div className="heatmap-explainer glass-card">
+          <div className="section-kicker"><Info size={16} /> How to read this</div>
+          <p>Every port is scored by the Feature 1 model. Higher probability means incoming demand is more likely to exceed available berth capacity in the latest historical forecast day.</p>
+          <div className="heat-legend"><span><i className="legend-hot" /> High pressure</span><span><i className="legend-warm" /> Watch</span><span><i className="legend-cool" /> Normal</span></div>
+          <div className="heatmap-counts"><strong>{highRiskCount}</strong> high <strong>{mediumRiskCount}</strong> watch</div>
+        </div>
+      </section>
+
+      <section className="heatmap-board glass-card">
+        <div className="heatmap-board-heading"><div><div className="section-kicker"><AlertTriangle size={16} /> Predicted pressure zones</div><h3>Port congestion heatmap</h3></div><span className="timeline-count">Click a port cell for details</span></div>
+        <div className="heatmap-detail">
+          <div className="heatmap-detail-heading"><div><span className="section-kicker">Selected port</span><h3>{selectedPort.port_name}</h3></div><span className={`risk-pill ${String(selectedPort.risk_level).toLowerCase()}`}>{selectedPort.risk_level} · {Math.round(selectedPort.congestion_probability * 100)}%</span></div>
+          <div className="heatmap-detail-meta">Port ID {selectedPort.port_id} · Forecast date {new Date(selectedPort.forecast_start).toLocaleDateString()}</div>
+          <div className="hotspot-reasons">{(selectedPort.predicted_hotspots?.[0]?.reasons || ["No elevated indicators"]).map(reason => <span key={reason}>{reason}</span>)}</div>
+        </div>
+        <div className="heatmap-grid" role="grid" aria-label="Port congestion heatmap">
+          {predictions.map(port => {
+            const score = Math.round((port.congestion_probability || 0) * 100);
+            const level = String(port.risk_level || "LOW").toLowerCase();
+            return <button key={port.port_id} className={`heatmap-cell ${level} ${selectedPort.port_id === port.port_id ? "selected" : ""}`} onClick={() => setSelectedPortId(port.port_id)} title={`${port.port_name}: ${score}% ${level} risk`}>
+              <span>P{port.port_id}</span><strong>{score}</strong>
+            </button>;
+          })}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const fetchBerthAssignments = async () => {
+  const response = await fetch(`${API_BASE}/optimize-berths?port_id=1`, { method: "POST" });
+  if (!response.ok) throw new Error("Berth optimizer unavailable");
+  return response.json();
+};
+
+const BerthAssignments = () => {
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadAssignments = async () => {
+    setRefreshing(true);
+    setError("");
+    try {
+      setResult(await fetchBerthAssignments());
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => { loadAssignments(); }, []);
+
+  if (!result && !error) return <div className="plan-loading">Running berth and crane optimizer...</div>;
+  if (error) return <div className="assignment-error glass-card"><AlertTriangle size={20} /><div><strong>Optimizer unavailable</strong><p>{error}. Start the API and try again.</p></div><button className="btn btn-secondary" onClick={loadAssignments}>Retry</button></div>;
+
+  const assignments = result.assignments || [];
+  const totalWait = Math.round(result.objective?.total_wait_minutes || 0);
+  const averageWait = assignments.length ? Math.round(assignments.reduce((sum, item) => sum + item.estimated_wait_minutes, 0) / assignments.length) : 0;
+  const waitingCount = assignments.filter(item => item.estimated_wait_minutes > 0).length;
+
+  return (
+    <div className="assignments-page animate-fade-in">
+      <header className="operations-header">
+        <div className="page-heading">
+          <p className="eyebrow">Feature 2 / resource allocation</p>
+          <h2>Berth Assignments</h2>
+          <p className="page-subtitle">A live view of vessel-to-berth and quay-crane assignments produced by the optimizer.</p>
+        </div>
+        <button className="btn btn-primary" onClick={loadAssignments} disabled={refreshing}>
+          <RotateCcw size={16} className={refreshing ? "spin" : ""} /> {refreshing ? "Optimizing" : "Run optimizer"}
+        </button>
+      </header>
+
+      <section className="assignment-stats">
+        <div className="assignment-stat glass-card"><span>Optimizer status</span><strong className="stat-success">{result.status}</strong><small>{result.constraints_satisfied ? "All constraints satisfied" : "Review constraint violations"}</small></div>
+        <div className="assignment-stat glass-card"><span>Vessels scheduled</span><strong>{assignments.length}</strong><small>Port 1 assignment preview</small></div>
+        <div className="assignment-stat glass-card"><span>Total waiting</span><strong>{totalWait}<em> min</em></strong><small>{waitingCount} vessels delayed</small></div>
+        <div className="assignment-stat glass-card"><span>Avg wait / vessel</span><strong>{averageWait}<em> min</em></strong><small>From ETA to service start</small></div>
+      </section>
+
+      <section className="assignment-table-card glass-card">
+        <div className="assignment-table-heading"><div><div className="section-kicker"><Anchor size={16} /> Assignment register</div><h3>Vessel resource schedule</h3></div><span className="timeline-count">Run {result.optimization_run_id}</span></div>
+        {assignments.length ? <div className="assignment-table-wrap"><table className="assignment-table"><thead><tr><th>Vessel / call</th><th>Arrival</th><th>Assigned berth</th><th>Quay cranes</th><th>Service window</th><th>Waiting</th></tr></thead><tbody>{assignments.map(assignment => <tr key={assignment.vessel_id}>
+          <td><strong>Vessel {assignment.vessel_id}</strong><small>Port 1</small></td>
+          <td>{new Date(assignment.arrival_time).toLocaleString()}</td>
+          <td><span className="berth-chip">{assignment.berth_id}</span></td>
+          <td><div className="crane-chips">{assignment.crane_ids.map(crane => <span key={crane}>{crane}</span>)}</div></td>
+          <td><span>{new Date(assignment.service_start).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span><small>to {new Date(assignment.service_end).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</small></td>
+          <td><span className={`wait-chip ${assignment.estimated_wait_minutes > 0 ? "delayed" : "on-time"}`}>{Math.round(assignment.estimated_wait_minutes)} min</span></td>
+        </tr>)}</tbody></table></div> : <div className="assignment-empty"><CheckCircle2 size={22} /><p>No assignments returned for this port.</p></div>}
+      </section>
     </div>
   );
 };
@@ -223,12 +376,6 @@ const Placeholder = ({ title }) => (
 );
 
 const SCENE_TIME = "2019-01-03T12:00:00Z";
-
-const fetchScene = async (timestamp) => {
-  const res = await fetch(`${API_BASE}/visualization/scene?port_id=1&at=${encodeURIComponent(timestamp)}`);
-  if (!res.ok) throw new Error("Visualization API unavailable");
-  return res.json();
-};
 
 const sceneColor = (status) => ({
   CONGESTED: "#ef4444",
@@ -406,8 +553,8 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={<OperationsPlan />} />
-            <Route path="/hotspots" element={<Placeholder title="Congestion Heatmap" />} />
-            <Route path="/berths" element={<Placeholder title="Berth Assignments" />} />
+            <Route path="/hotspots" element={<Heatmap />} />
+            <Route path="/berths" element={<BerthAssignments />} />
             <Route path="/routing" element={<Placeholder title="Alternate Routes" />} />
             <Route path="/visualization" element={<PortReplay />} />
           </Routes>

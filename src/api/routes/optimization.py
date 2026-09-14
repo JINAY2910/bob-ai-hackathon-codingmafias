@@ -1,10 +1,22 @@
 from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import pandas as pd
 from src.api.models import OptimizerOutput, BerthAssignment, OptimizationObjective
 from src.optimizer.berth_crane_optimizer import optimize_feature2
 
 router = APIRouter()
+RESULTS_DIR = Path("data/feature2/results")
+
+
+def _load_or_run_optimizer():
+    assignments_path = RESULTS_DIR / "optimizer_assignments.csv"
+    summary_path = RESULTS_DIR / "optimizer_summary.csv"
+    if assignments_path.exists() and summary_path.exists():
+        assignments = pd.read_csv(assignments_path, low_memory=False)
+        summary = pd.read_csv(summary_path)
+        return assignments, summary, "cached"
+    return (*optimize_feature2(input_dir="data/feature2", output_dir="data/feature2/results"), "fresh")
 
 @router.post("", response_model=OptimizerOutput)
 def optimize_berths(port_id: int = 1):
@@ -15,11 +27,9 @@ def optimize_berths(port_id: int = 1):
     now = datetime.now(timezone.utc)
     
     try:
-        # Run the actual optimizer (which reads from data/feature2)
-        assignments_df, summary_df = optimize_feature2(
-            input_dir="data/feature2",
-            output_dir="data/feature2/results"
-        )
+        # Reuse the generated full-result files so opening the UI does not
+        # rerun the expensive unbounded optimizer on every request.
+        assignments_df, summary_df, source = _load_or_run_optimizer()
     except Exception as e:
         # Fallback if data doesn't exist
         return OptimizerOutput(
@@ -55,7 +65,7 @@ def optimize_berths(port_id: int = 1):
 
     return OptimizerOutput(
         optimization_run_id=f"opt-{now.strftime('%Y-%m-%d')}-{port_id}",
-        status="FEASIBLE",
+        status="FEASIBLE_CACHED" if source == "cached" else "FEASIBLE",
         assignments=berth_assignments,
         objective=OptimizationObjective(
             total_wait_minutes=total_wait,

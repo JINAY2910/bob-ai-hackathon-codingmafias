@@ -220,9 +220,9 @@ def _actions_for_shift(
             "status": "PENDING_REVIEW",
             "fallback": "Hold vessel in anchorage and recalculate the next feasible slot.",
         })
-    for hotspot in hotspots[:2]:
+    for hotspot_index, hotspot in enumerate(hotspots[:2]):
         actions.append({
-            "action_id": f"monitor-{hotspot['berth_id']}-{shift_start.strftime('%Y%m%d%H')}",
+            "action_id": f"monitor-{hotspot['berth_id']}-{shift_start.strftime('%Y%m%d%H')}-{hotspot_index}",
             "priority": "P1" if hotspot["probability"] >= 0.75 else "P2",
             "owner_role": "SHIFT_SUPERVISOR",
             "description": (
