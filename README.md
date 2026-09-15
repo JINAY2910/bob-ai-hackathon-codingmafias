@@ -69,7 +69,7 @@ PortFlow is an End-to-End Predictive Command Center that shifts operations from 
 
 ```bash
 # 1. Clone the repo and navigate into it
-git clone https://github.com/[your-repo].git
+git clone https://github.com/JINAY2910/bob-ai-hackathon-codingmafias.git
 cd bob-ai-hackathon-codingmafias
 
 # 2. Start the Backend API (Terminal 1)

@@ -30,7 +30,7 @@ touch src/.env
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/[your-org]/bob-ai-hackathon-codingmafias.git
+git clone https://github.com/JINAY2910/bob-ai-hackathon-codingmafias.git
 cd bob-ai-hackathon-codingmafias
 
 # 2. Install backend dependencies
