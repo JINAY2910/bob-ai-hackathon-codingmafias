@@ -31,3 +31,25 @@ submission:
     - "Alternate routing recommendations for vessels facing predicted delays"
     - "72-hour rolling port operations plan generated for shift supervisors"
     - "IBM Bob-guided investigation of why a hotspot is forming, in plain language"
+
+  tech_stack:
+    languages: ["Python", "JavaScript"]
+    frameworks: ["FastAPI", "React", "Vite", "TailwindCSS"]
+    ibm_technologies: ["IBM Bob LLM"]
+    databases: ["Pandas/CSV"]
+    other: ["Scikit-Learn", "XGBoost"]
+
+  what_we_are_most_proud_of: >
+    We are most proud of our Optimizer's mathematical proof. When we ran our heuristic scheduler against the full 1.48 million historical vessel records, it definitively proved that 858,000 vessels were fundamentally unassignable due to physical capacity constraints. This mathematically validated our entire project thesis: Optimization alone is not enough; you must predict and reroute traffic before it arrives.
+
+  known_limitations: >
+    Because we are using 2019 hackathon data, the "72-hour rolling window" operates on a simulated date rather than today's actual date. We also used "historical shipping lane traffic volume" as a proxy for geographic distance in our Alternate Routing engine to keep the MVP lightweight.
+
+artifacts:
+  source_code: "src/"
+  setup_guide: "docs/setup-guide.md"
+  architecture_doc: "docs/architecture.md"
+  demo_video: "demo/demo-video-link.txt"
+  live_demo: "demo/live-demo-url.txt"
+  screenshots: "demo/screenshots/"
+  presentation: "presentation/"
