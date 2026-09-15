@@ -59,6 +59,36 @@ h1, h2, h3, h4, h5, h6 {
 .main-content::-webkit-scrollbar { width: 8px; }
 .main-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 
+.data-basis {
+  max-width: 72rem;
+  margin: 0 auto 1.5rem;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--text-muted);
+  background: rgba(88, 166, 255, 0.06);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.data-basis-label {
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.data-basis a {
+  color: var(--text-main);
+  text-decoration: none;
+}
+.data-basis a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .page-container {
   max-width: 72rem;
   margin: 0 auto;

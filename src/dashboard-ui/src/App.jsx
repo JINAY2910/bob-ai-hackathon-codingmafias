@@ -18,6 +18,19 @@ function App() {
       <div className="app-container">
         <Sidebar />
         <main className="main-content">
+          <div className="data-basis" role="status">
+            <span className="data-basis-label">Data basis</span>
+            <span>
+              <a
+                href="https://zenodo.org/records/10380638"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Port calls and vessel trajectory dataset in the Caribbean with accurate port quays survey
+                {' — Click here to view the data'}
+              </a>
+            </span>
+          </div>
           <Routes>
             <Route path="/" element={<OperationsPlan />} />
             <Route path="/hotspots" element={<Heatmap />} />
